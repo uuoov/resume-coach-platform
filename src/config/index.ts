@@ -1,0 +1,65 @@
+/**
+ * 生产环境配置
+ */
+
+export const config = {
+  // AI 配置
+  ai: {
+    provider: process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.DASHSCOPE_API_KEY ? 'dashscope' : 'openai'),
+    model: process.env.DEEPSEEK_MODEL || process.env.DASHSCOPE_MODEL || process.env.OPENAI_MODEL || 'qwen-plus',
+    apiKey: process.env.DEEPSEEK_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.OPENAI_API_KEY || '',
+    baseURL: process.env.DEEPSEEK_BASE_URL || process.env.OPENAI_BASE_URL,
+  },
+
+  // 服务器配置
+  server: {
+    port: parseInt(process.env.PORT || '3001', 10),
+    env: process.env.NODE_ENV || 'development',
+    corsOrigin: process.env.CORS_ORIGIN || '*',
+    requestLimit: process.env.REQUEST_LIMIT || '100kb',
+    uploadLimit: process.env.UPLOAD_LIMIT || '10mb',
+  },
+
+  // 数据库配置
+  database: {
+    url: process.env.DATABASE_URL || '',
+  },
+
+  // 文件存储配置
+  storage: {
+    path: process.env.FILE_STORAGE_PATH || './uploads',
+    oss: {
+      accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
+      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
+      bucket: process.env.OSS_BUCKET || '',
+      region: process.env.OSS_REGION || 'oss-cn-shanghai',
+    },
+  },
+
+  // 企业信息 API 配置
+  companyInfo: {
+    qichachaApiKey: process.env.QICHACHA_API_KEY || '',
+  },
+
+  // 安全配置
+  security: {
+    jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+  },
+
+  // 缓存配置
+  cache: {
+    url: process.env.REDIS_URL || null,
+    ttl: parseInt(process.env.CACHE_TTL || '3600', 10),
+  },
+
+  // 日志配置
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+    filePath: process.env.LOG_FILE_PATH || null,
+    maxSize: process.env.LOG_MAX_SIZE || '10m',
+    maxFiles: process.env.LOG_MAX_FILES || '7d',
+  },
+};
+
+export default config;

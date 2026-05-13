@@ -1,0 +1,102 @@
+// Resume Coach Platform - Prisma Schema
+// 数据库：PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 用户模型 ====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // 加密存储
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resumes Resume[]
+  jds     JD[]
+}
+
+// ==================== 简历模型 ====================
+
+model Resume {
+  id               String   @id @default(cuid())
+  userId           String?  // 可选，支持未登录用户上传
+  name             String   // 简历名称
+  content          Json     // 结构化简历内容 (Resume 类型)
+  rawText          String   @db.Text // 原始文本
+  filePath         String?  // 原始文件路径
+  fileType         String   // pdf | docx
+  version          Int      @default(1) // 版本号
+  parentId         String?  // 父版本 ID（用于版本管理）
+  changeDescription String? // 版本变更描述
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent       Resume?      @relation("ResumeVersions", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Resume[]     @relation("ResumeVersions")
+  matchRecords MatchRecord[]
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+// ==================== JD 模型 ====================
+
+model JD {
+  id          String   @id @default(cuid())
+  userId      String?  // 可选，支持未登录用户
+  jobTitle    String   // 岗位名称
+  company     String?  // 公司名称
+  content     Json     // JD 分析结果 (JDAnalysis 类型)
+  rawText     String   @db.Text // 原始 JD 文本
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  matchRecords MatchRecord[]
+
+  @@index([userId])
+}
+
+// ==================== 匹配记录模型 ====================
+
+model MatchRecord {
+  id         String   @id @default(cuid())
+  resumeId   String
+  jdId       String
+  result     Json     // 匹配度结果 (MatchResult 类型)
+  suggestions Json?   // 优化建议
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  jd     JD     @relation(fields: [jdId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId, jdId])
+}
+
+// ==================== 公司信息模型 ====================
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  industry    String?  // 行业
+  size        String?  // 公司规模
+  location    String?  // 所在地
+  website     String?  // 官网
+  description String?  @db.Text // 公司简介
+  culture     Json?    // 公司文化标签
+  techStack   String[] // 技术栈
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
