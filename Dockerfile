@@ -8,8 +8,8 @@ WORKDIR /app/frontend
 # 复制前端依赖文件
 COPY frontend/package*.json ./
 
-# 安装依赖
-RUN npm ci --only=production
+# 安装依赖（包含 Vite/TypeScript 构建依赖）
+RUN npm ci
 
 # 复制前端代码
 COPY frontend/ ./
@@ -36,7 +36,13 @@ COPY tsconfig.json ./
 # 构建 TypeScript 代码
 RUN npm run build
 
-# 阶段 3: 生产镜像
+# 阶段 3: 前端 Nginx 镜像
+FROM nginx:1.24-alpine AS frontend-runtime
+
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=frontend-builder /app/frontend/dist /var/www/html
+
+# 阶段 4: 生产镜像
 FROM node:20-alpine AS production
 
 WORKDIR /app
@@ -59,7 +65,7 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY package*.json ./
 
 # 仅安装生产依赖
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # 创建必要的目录并设置权限
 RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app

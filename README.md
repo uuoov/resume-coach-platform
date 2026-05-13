@@ -198,8 +198,11 @@ docker compose logs -f app
 健康检查：
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:8080/health
+curl http://localhost:8080/api
 ```
+
+默认 Web 入口是 `WEB_HTTP_PORT=8080`，前端和 API 使用同一个来源：页面走 `/`，接口走 `/api`。如果改成 80 端口，设置 `WEB_HTTP_PORT=80` 后重新 `docker compose up -d`。
 
 部署到公网时建议：
 

@@ -31,6 +31,8 @@ import companyRoutes from './routes/company.routes';
 
 const app = express();
 const PORT = config.server.port;
+const frontendDistPath = path.resolve(process.cwd(), 'frontend', 'dist');
+const frontendIndexPath = path.join(frontendDistPath, 'index.html');
 
 // 生产环境安全和性能中间件
 app.use(helmet({
@@ -112,6 +114,36 @@ app.use('/api/jd', jdRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/optimize', optimizeRoutes);
 app.use('/api/company', companyRoutes);
+
+if (config.server.env === 'production') {
+  app.use(express.static(frontendDistPath, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
+
+  app.get('*', (req, res, next) => {
+    if (
+      req.path.startsWith('/api')
+      || req.path.startsWith('/uploads')
+      || req.path === '/health'
+      || req.path === '/metrics'
+    ) {
+      return next();
+    }
+
+    return res.sendFile(frontendIndexPath, (error) => {
+      if (error) {
+        next(error);
+      }
+    });
+  });
+}
 
 // 全局错误处理中间件（必须在所有路由之后定义）
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

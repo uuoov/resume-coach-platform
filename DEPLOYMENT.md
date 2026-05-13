@@ -78,6 +78,7 @@ JWT_SECRET=your_secure_jwt_secret_here
 
 # 域名配置
 CORS_ORIGIN=https://yourdomain.com
+WEB_HTTP_PORT=8080
 ```
 
 ### 3. 构建和启动
@@ -90,7 +91,8 @@ npm run docker:up
 npm run docker:logs
 
 # 检查健康状态
-curl http://localhost:3000/health
+curl http://localhost:8080/health
+curl http://localhost:8080/api
 ```
 
 ### 4. 数据库迁移
@@ -197,7 +199,7 @@ resume-coach-platform/
 ### 健康检查
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:8080/health
 ```
 
 返回示例：
@@ -217,7 +219,7 @@ curl http://localhost:3000/health
 ### 应用指标
 
 ```bash
-curl http://localhost:3000/metrics
+curl http://localhost:8080/metrics
 ```
 
 返回示例：
@@ -368,7 +370,7 @@ docker exec resume-coach-app npx prisma migrate deploy
 npm run docker:down && npm run docker:up
 
 # 5. 验证
-curl http://localhost:3000/health
+curl http://localhost:8080/health
 ```
 
 ---
