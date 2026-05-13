@@ -6,7 +6,8 @@
 import axios from 'axios';
 
 // 从环境变量读取 API 基础 URL，开发环境默认为后端实际端口
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV ? 'http://localhost:3001/api' : '/api');
 export const AUTH_TOKEN_KEY = 'resume_coach_token';
 export const AUTH_EXPIRED_EVENT = 'resume-coach:auth-expired';
 const LEGACY_TOKEN_KEY = 'token';

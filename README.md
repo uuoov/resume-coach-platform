@@ -131,6 +131,8 @@ http://localhost:5173
 VITE_API_BASE_URL=http://localhost:3001/api
 ```
 
+生产环境建议不设置 `VITE_API_BASE_URL`，前端会默认请求同源 `/api`，再由 Nginx/反向代理转发到后端，避免手机或微信浏览器误连 `localhost`。
+
 ## 常用命令
 
 ```bash
