@@ -1,193 +1,276 @@
-# Resume Coach Platform - 简历辅导平台
+# Resume Coach Platform
 
-AI 驱动的简历优化平台，专注于**针对公司 + 岗位的定向简历优化**。
+AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定向匹配分析与简历优化建议。
 
-## 项目背景
+它不是一个简历模板工具，而是一个“投递前诊断 + 一岗一版优化”工具：上传简历、输入 JD，系统会解析双方结构化信息，计算匹配度，指出差距，并给出可执行的优化建议。
 
-市面上的简历工具大多只提供模板和简单优化，缺乏针对特定公司和岗位的深度定制。本平台通过 AI 技术，实现：
+## 功能特性
 
-- **公司维度定制** - 分析公司背景、文化、技术栈
-- **岗位维度定制** - 深度解析 JD，提取关键词和能力要求
-- **一岗一版** - 为每个投递岗位生成定制化简历
-
-## 核心功能
-
-### 已完成功能 (MVP - 第一阶段)
-
-- [x] 简历上传与解析 (PDF/Word) - 支持 AI 辅助结构化提取
-- [x] JD 输入与解析 - DashScope API 集成
-- [x] 匹配度分析 (5 维度) - 硬技能/经验/教育/软技能/行业
-- [x] 优化建议生成 - 基于差距分析
-- [x] 文件上传处理 - Multer 中间件
-- [x] 数据库集成 - Prisma + PostgreSQL
-- [x] 简历版本管理 - 支持一岗一版
-- [x] 前端界面 - React + Vite + MUI (5 个核心页面)
-
-### V1.0 功能 (第二阶段)
-
-- [ ] 用户系统 - 注册/登录
-- [ ] 公司信息自动查询
-- [ ] PDF 导出
-- [ ] 简历版本管理 UI
-
-### V2.0 功能 (第三阶段)
-
-- [ ] 模拟面试
-- [ ] 投递追踪
-- [ ] 智能提醒
+- 简历上传解析：支持 PDF 和 Word，提取基本信息、教育经历、工作经历、项目经历、技能等结构化数据。
+- JD 智能分析：提取岗位硬技能、软技能、经验要求、学历要求和关键词。
+- 匹配度计算：从硬技能、项目经验、教育背景、软技能、行业背景等维度评估适配度。
+- 优化建议生成：按优先级输出可执行建议，支持 AI 重新润色内容。
+- PDF 预览与导出：支持中文简历渲染、联系方式、日期、列表项和版式优化。
+- 用户认证：注册、登录、JWT 鉴权，生产环境要求数据库持久化。
+- 版本管理：支持为不同岗位创建简历版本。
+- 公司信息查询：支持内置信息和可选企业信息 API 扩展。
+- 监控接口：提供健康检查和基础运行指标。
 
 ## 技术栈
 
-- **运行时**: Node.js 18+
-- **语言**: TypeScript 5+
-- **Web 框架**: Express
-- **数据库**: PostgreSQL + Prisma ORM
-- **AI**: 通义千问 (qwen-plus) - DashScope API
-- **文档解析**: pdf-parse, mammoth
-- **文件上传**: multer
+| 模块 | 技术 |
+| --- | --- |
+| 后端 | Node.js, Express, TypeScript |
+| 前端 | React, Vite, MUI |
+| 数据库 | PostgreSQL, Prisma ORM |
+| AI 接入 | DeepSeek / DashScope / OpenAI-compatible API |
+| 文件解析 | pdf-parse, mammoth |
+| PDF 生成 | PDFKit |
+| 测试 | Jest, Supertest |
+| 部署 | Docker, Docker Compose, Nginx |
+
+## 系统架构
+
+```mermaid
+flowchart LR
+  Browser["Browser / React App"] --> API["Express API"]
+  API --> Auth["JWT Auth"]
+  API --> Parser["Resume Parser"]
+  API --> Analyzer["JD Analyzer"]
+  API --> Matcher["Matching Engine"]
+  API --> Optimizer["Optimization Advisor"]
+  API --> PDF["PDF Export"]
+  API --> DB[("PostgreSQL")]
+  API --> Files["Uploads / Object Storage"]
+  Analyzer --> AI["AI Provider"]
+  Optimizer --> AI
+  Parser --> AI
+```
 
 ## 快速开始
 
-### 1. 安装依赖
+### 环境要求
+
+- Node.js 20+
+- npm 10+
+- PostgreSQL 14+，推荐 PostgreSQL 15
+- 可选：Docker 与 Docker Compose
+
+### 安装依赖
 
 ```bash
 npm install
+cd frontend
+npm install
+cd ..
 ```
 
-### 2. 配置环境变量
+### 配置环境变量
 
 ```bash
 cp .env.example .env
-# 编辑 .env 文件，填入 API Key
 ```
 
-获取 API Key: https://dashscope.console.aliyun.com/
+最少需要配置：
 
-### 3. 初始化数据库
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/resume_coach?schema=public"
+JWT_SECRET=replace_with_a_long_random_secret
+
+# 三选一：DeepSeek / DashScope / OpenAI-compatible
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+生产环境不要开启内存认证降级，不要提交 `.env`、`.env.local`、`.env.production`。
+
+### 初始化数据库
 
 ```bash
-npx prisma generate
+npm run prisma:generate
 npx prisma db push
 ```
 
-### 4. 运行开发服务器
+生产环境建议使用迁移：
 
-**后端服务器:**
 ```bash
-cd resume-coach-platform
+npm run prisma:migrate
+```
+
+### 启动开发环境
+
+后端：
+
+```bash
 npm run dev
 ```
-服务器将在 `http://localhost:3000` 启动
 
-**前端开发服务器:**
+默认地址：
+
+```txt
+http://localhost:3001
+```
+
+前端：
+
 ```bash
-cd resume-coach-platform/frontend
+cd frontend
 npm run dev
 ```
-前端将在 `http://localhost:5173` 启动
 
-### 5. 构建生产版本
+默认地址：
+
+```txt
+http://localhost:5173
+```
+
+前端 API 地址可通过 `VITE_API_BASE_URL` 配置，例如：
+
+```env
+VITE_API_BASE_URL=http://localhost:3001/api
+```
+
+## 常用命令
 
 ```bash
+# 后端检查
+npm run lint
 npm run build
-npm start
+npm test
+
+# 数据库
+npm run prisma:generate
+npm run prisma:migrate
+
+# 前端
+cd frontend
+npm run lint
+npm run build
 ```
+
+## API 概览
+
+| Method | Endpoint | 说明 |
+| --- | --- | --- |
+| GET | `/health` | 健康检查 |
+| GET | `/metrics` | 基础运行指标 |
+| POST | `/api/auth/register` | 用户注册 |
+| POST | `/api/auth/login` | 用户登录 |
+| GET | `/api/auth/me` | 当前用户信息 |
+| POST | `/api/resume/parse` | 上传并解析简历 |
+| POST | `/api/resume/export-pdf` | 导出 PDF |
+| POST | `/api/resume/preview-pdf` | 预览 PDF |
+| GET | `/api/resume/:id/versions` | 简历版本列表 |
+| POST | `/api/resume/:id/versions` | 创建简历版本 |
+| GET | `/api/resume/version/:versionId` | 获取指定版本 |
+| POST | `/api/resume/version/:versionId/revert` | 恢复指定版本 |
+| POST | `/api/jd/analyze` | 分析 JD |
+| POST | `/api/match/calculate` | 计算匹配度 |
+| POST | `/api/optimize/suggest` | 生成优化建议 |
+| GET | `/api/company/query` | 查询公司信息 |
+| POST | `/api/company/auto-query` | 自动查询公司信息 |
+
+## Docker 部署
+
+项目内置 `Dockerfile` 和 `docker-compose.yml`，包含：
+
+- PostgreSQL 15
+- Redis 7
+- Express 应用
+- Nginx 反向代理
+- Prisma 迁移服务
+
+基础流程：
+
+```bash
+cp .env.example .env.production
+# 编辑 .env.production，填写数据库密码、JWT_SECRET、AI API Key、CORS_ORIGIN 等
+
+docker compose build
+docker compose run --rm prisma-migrate
+docker compose up -d
+docker compose logs -f app
+```
+
+健康检查：
+
+```bash
+curl http://localhost:3000/health
+```
+
+部署到公网时建议：
+
+- 使用强密码和长随机 `JWT_SECRET`。
+- 将 `CORS_ORIGIN` 设置为真实域名。
+- 使用 HTTPS。
+- 将 `uploads` 挂载到持久化磁盘，或迁移到 OSS/S3 等对象存储。
+- 定期备份 PostgreSQL。
+
+更多说明见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
+
+## 数据库要求
+
+当前项目使用 PostgreSQL，Prisma schema 中使用了 `Json`、`Text` 和字符串数组字段，因此不建议直接切换到 MySQL。
+
+推荐：
+
+- PostgreSQL 15
+- Prisma Client
+- 生产环境执行 `prisma migrate deploy`
+- 数据库账号具备迁移建表权限
 
 ## 项目结构
 
-```
+```txt
 resume-coach-platform/
-├── src/                            # 后端源码
-│   ├── index.ts                    # 入口文件 + API 路由
-│   ├── config/                     # 配置文件
-│   ├── middleware/                  # Express 中间件
-│   ├── services/                   # 业务服务
-│   │   ├── resume-parser.ts        # 简历解析 (AI 辅助)
-│   │   ├── jd-analyzer.ts          # JD 分析 (AI)
-│   │   ├── matching-engine.ts      # 匹配度计算
-│   │   ├── optimization-advisor.ts # 优化建议生成
-│   │   ├── pdf-export.ts           # PDF 导出
-│   │   ├── auth-service.ts         # 认证服务
-│   │   ├── company-info-service.ts # 公司信息查询
-│   │   └── database.ts             # 数据库服务
-│   ├── repositories/               # 数据访问层
-│   ├── utils/                      # 工具函数
-│   └── types/                      # TypeScript 类型定义
-├── frontend/                       # React 前端 (Vite + MUI)
-│   ├── src/
-│   │   ├── App.tsx                 # 主应用
-│   │   ├── services/api.ts         # API 客户端
-│   │   ├── components/             # 通用组件
-│   │   └── pages/                  # 页面组件
-│   └── package.json
-├── scripts/                        # 测试与维护脚本
-│   ├── test-api.js                 # API 集成测试
-│   ├── test-auth.js                # 认证功能测试
-│   ├── test-parse.js               # 解析 Bug 验证
-│   ├── test-pdf-export.js          # PDF 导出测试
-│   ├── update-parser.js            # 解析器更新脚本
-│   ├── update-projects.js          # 项目数据更新
-│   └── update-skills.js            # 技能数据更新
-├── tests/                          # 单元/集成测试 (Jest)
-├── prisma/                         # 数据库模型
-├── docs/                           # 项目文档
-├── nginx/                          # Nginx 配置
-├── uploads/                        # 上传文件存储
-├── DEPLOYMENT.md                   # 部署指南
-├── DEV.md                          # 开发指南
-├── Dockerfile                      # Docker 构建
-├── docker-compose.yml              # Docker Compose
-├── package.json
-├── tsconfig.json
-└── .env.example
+├── src/                    # Express 后端源码
+│   ├── config/             # 环境配置
+│   ├── middleware/         # 请求日志、认证等中间件
+│   ├── repositories/       # 数据访问层
+│   ├── routes/             # API 路由
+│   ├── services/           # 简历解析、JD 分析、匹配、优化、PDF、认证
+│   ├── types/              # TypeScript 类型
+│   └── utils/              # AI Client、日志、监控等工具
+├── frontend/               # React + Vite 前端
+├── prisma/                 # Prisma schema
+├── tests/                  # Jest 测试
+├── docs/                   # 产品与 Prompt 文档
+├── nginx/                  # Nginx 配置
+├── uploads/                # 本地上传目录，实际文件不入库
+├── Dockerfile
+├── docker-compose.yml
+└── DEPLOYMENT.md
 ```
 
-## API 设计
+## 安全说明
 
-### 核心接口
+- 不要提交真实 `.env` 文件。
+- 不要把 GitHub token、AI API Key、数据库密码写入 Git 配置或代码。
+- 生产环境注册必须依赖 PostgreSQL 持久化，数据库不可用时注册会失败。
+- 测试账号和内存认证仅用于本地测试，不应作为生产登录方案。
+- 上传目录默认被 `.gitignore` 排除，只保留 `uploads/.gitkeep`。
+
+## 测试状态
+
+当前测试覆盖：
+
+- API 基础路由
+- 认证注册/登录/鉴权
+- 简历解析
+- JD 分析
+- 匹配度计算
+- 优化建议
+- AI Client 配置
+- 公司信息接口
+
+运行：
 
 ```bash
-# 上传并解析简历
-POST /api/resume/parse
-Request: multipart/form-data (file: ResumeFile, userId?: string)
-Response: { success: true, data: ParsedResume }
-
-# JD 解析
-POST /api/jd/analyze
-Request: { jobTitle: string, company: string, jdText: string, userId?: string }
-Response: { success: true, data: JDAnalysis }
-
-# 匹配度分析
-POST /api/match/calculate
-Request: { resume: Resume, jdAnalysis: JDAnalysis, resumeId?: string, jdId?: string }
-Response: { success: true, data: MatchResult }
-
-# 获取优化建议
-POST /api/optimize/suggest
-Request: { resume: Resume, jdAnalysis: JDAnalysis, matchResult: MatchResult }
-Response: { success: true, data: OptimizationSuggestion[] }
-
-# 生成优化内容
-POST /api/optimize/suggest (带 suggestionId 和 originalContent)
-Response: { success: true, data: { optimizedContent: string } }
+npm run lint
+npm run build
+npm test
 ```
-
-## 开发团队
-
-根据任务类型分配的专业角色：
-
-| 角色 | 职责 | 任务 |
-|------|------|------|
-| **Tech Lead** | 架构设计、代码审查 | 统筹 |
-| **Backend Dev** | API、数据库 | 任务 3 |
-| **AI Engineer** | DashScope 集成、Prompt | 任务 4 |
-| **Frontend Dev A** | 核心页面 | 任务 5 |
-| **Frontend Dev B** | 功能模块 | 任务 6 |
-| **Full Stack/QA** | 文件处理、测试 | 任务 7 |
-
-## 开发指南
-
-详细开发和测试说明请参考 [DEV.md](./DEV.md)
 
 ## License
 
