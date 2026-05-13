@@ -47,6 +47,10 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://${DB_USER:-resume_user}:${DB_PASSWORD:-resume_password}@postgres:5432/${DB_NAME:-resume_coach}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      REDIS_URL: redis://redis:6379
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}

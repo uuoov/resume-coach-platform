@@ -26,7 +26,7 @@ DEEPSEEK_MODEL=deepseek-chat
 DATABASE_URL="postgresql://user:password@localhost:5432/resume_coach?schema=public"
 
 # 服务器配置
-PORT=3000
+PORT=3001
 NODE_ENV=development
 
 # 文件存储
@@ -53,7 +53,7 @@ npx prisma db push
 npm run dev
 ```
 
-服务器将在 `http://localhost:3000` 启动
+服务器将在 `http://localhost:3001` 启动
 
 ---
 
@@ -62,13 +62,13 @@ npm run dev
 ### 健康检查
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 ```
 
 ### 1. 上传并解析简历
 
 ```bash
-curl -X POST http://localhost:3000/api/resume/parse \
+curl -X POST http://localhost:3001/api/resume/parse \
   -F "file=@/path/to/your/resume.pdf" \
   -F "userId=user123" \
   -F "name=我的简历"
@@ -77,7 +77,7 @@ curl -X POST http://localhost:3000/api/resume/parse \
 ### 2. 分析 JD
 
 ```bash
-curl -X POST http://localhost:3000/api/jd/analyze \
+curl -X POST http://localhost:3001/api/jd/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "jobTitle": "高级 Java 工程师",
@@ -90,7 +90,7 @@ curl -X POST http://localhost:3000/api/jd/analyze \
 ### 3. 计算匹配度
 
 ```bash
-curl -X POST http://localhost:3000/api/match/calculate \
+curl -X POST http://localhost:3001/api/match/calculate \
   -H "Content-Type: application/json" \
   -d '{
     "resume": { ... },
@@ -103,7 +103,7 @@ curl -X POST http://localhost:3000/api/match/calculate \
 ### 4. 获取优化建议
 
 ```bash
-curl -X POST http://localhost:3000/api/optimize/suggest \
+curl -X POST http://localhost:3001/api/optimize/suggest \
   -H "Content-Type: application/json" \
   -d '{
     "resume": { ... },
@@ -115,7 +115,7 @@ curl -X POST http://localhost:3000/api/optimize/suggest \
 ### 5. 生成优化后的内容
 
 ```bash
-curl -X POST http://localhost:3000/api/optimize/suggest \
+curl -X POST http://localhost:3001/api/optimize/suggest \
   -H "Content-Type: application/json" \
   -d '{
     "resume": { ... },

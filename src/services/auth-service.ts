@@ -90,10 +90,21 @@ export class AuthService {
     return prismaAvailable && Boolean(process.env.DATABASE_URL);
   }
 
+  private static isUnsafeJwtSecret(secret: string): boolean {
+    const placeholders = new Set([
+      'default_jwt_secret',
+      'replace_with_a_long_random_secret',
+      'your_secure_jwt_secret_here',
+      'resume-coach-dev-secret-key',
+    ]);
+
+    return placeholders.has(secret) || secret.length < 32;
+  }
+
   private static getJwtSecret(): string {
     const secret = process.env.JWT_SECRET;
-    if (!secret && process.env.NODE_ENV === 'production') {
-      throw new Error('JWT_SECRET 未配置');
+    if (process.env.NODE_ENV === 'production' && (!secret || this.isUnsafeJwtSecret(secret))) {
+      throw new Error('JWT_SECRET is missing or unsafe');
     }
     return secret || 'resume-coach-dev-secret-key';
   }

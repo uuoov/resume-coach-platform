@@ -4,9 +4,8 @@
  * 提供应用指标收集、健康检查、性能监控
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import os from 'os';
+import { prisma, prismaAvailable } from '../services/database';
 
 interface HealthCheckResult {
   status: 'healthy' | 'unhealthy';
@@ -152,7 +151,26 @@ class Monitor {
       },
     };
 
-    // 数据库健康检查
+    const memoryStatus = result.checks.memory.status;
+    if (memoryStatus === 'error') {
+      result.status = 'unhealthy';
+    }
+
+    const databaseUrl = process.env.DATABASE_URL?.trim();
+    if (!databaseUrl) {
+      result.status = 'unhealthy';
+      result.checks.database.status = 'error';
+      result.checks.database.message = 'DATABASE_URL is not configured';
+      return result;
+    }
+
+    if (!prismaAvailable || !prisma) {
+      result.status = 'unhealthy';
+      result.checks.database.status = 'error';
+      result.checks.database.message = 'Prisma client is not available';
+      return result;
+    }
+
     try {
       await prisma.$queryRaw`SELECT 1`;
     } catch (error) {
@@ -170,12 +188,14 @@ class Monitor {
 
   private getMemoryCheck(): HealthCheckResult['checks']['memory'] {
     const memUsage = process.memoryUsage();
-    const usage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
+    const total = os.totalmem();
+    const used = memUsage.rss;
+    const usage = total > 0 ? (used / total) * 100 : 0;
 
     let status: 'ok' | 'warning' | 'error';
     if (usage > 90) {
       status = 'error';
-    } else if (usage > 80) {
+    } else if (usage > 75) {
       status = 'warning';
     } else {
       status = 'ok';
@@ -183,8 +203,8 @@ class Monitor {
 
     return {
       status,
-      used: memUsage.heapUsed,
-      total: memUsage.heapTotal,
+      used,
+      total,
       usage,
     };
   }
