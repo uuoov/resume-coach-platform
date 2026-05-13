@@ -13,9 +13,14 @@ npm install
 复制 `.env.example` 到 `.env` 并配置：
 
 ```bash
-# 通义千问 API 配置
-DASHSCOPE_API_KEY=your_dashscope_api_key_here
-DASHSCOPE_MODEL=qwen-plus
+# DeepSeek API 配置（默认推荐）
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+
+# 可选：通义千问 API 配置
+# DASHSCOPE_API_KEY=your_dashscope_api_key_here
+# DASHSCOPE_MODEL=qwen-plus
 
 # 数据库配置
 DATABASE_URL="postgresql://user:password@localhost:5432/resume_coach?schema=public"
@@ -29,9 +34,8 @@ FILE_STORAGE_PATH=./uploads
 ```
 
 **获取 API Key:**
-- 访问 https://dashscope.console.aliyun.com/
-- 注册/登录阿里云账号
-- 创建 API Key
+- DeepSeek: 访问 https://platform.deepseek.com/ 创建 API Key
+- DashScope: 访问 https://dashscope.console.aliyun.com/ 创建 API Key
 
 ### 3. 初始化数据库
 
@@ -165,8 +169,8 @@ npm start
 
 ## 常见问题
 
-### Q: API 调用失败，提示 "DASHSCOPE_API_KEY 未配置"
-A: 确保 `.env` 文件存在且 `DASHSCOPE_API_KEY` 已正确配置
+### Q: AI 调用失败，提示 API Key 未配置
+A: 默认使用 DeepSeek，确保 `.env` 文件存在且 `DEEPSEEK_API_KEY` 已正确配置。也可以改用 `DASHSCOPE_API_KEY` 或 `OPENAI_API_KEY`。
 
 ### Q: 数据库连接失败
 A: 确保 PostgreSQL 服务已启动，且 `DATABASE_URL` 配置正确

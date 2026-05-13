@@ -47,6 +47,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://${DB_USER:-resume_user}:${DB_PASSWORD:-resume_password}@postgres:5432/${DB_NAME:-resume_coach}?schema=public
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY}
       DASHSCOPE_MODEL: ${DASHSCOPE_MODEL:-qwen-plus}
       FILE_STORAGE_PATH: /app/uploads

@@ -2,13 +2,59 @@
  * 生产环境配置
  */
 
+function readApiKey(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value || value.startsWith('your_') || value.includes('api_key_here')) {
+    return undefined;
+  }
+
+  return value;
+}
+
+const deepSeekApiKey = readApiKey('DEEPSEEK_API_KEY');
+const openAIApiKey = readApiKey('OPENAI_API_KEY');
+const dashScopeApiKey = readApiKey('DASHSCOPE_API_KEY');
+
+const aiProvider = deepSeekApiKey
+  ? 'deepseek'
+  : openAIApiKey
+    ? 'openai'
+    : dashScopeApiKey
+      ? 'dashscope'
+      : 'none';
+
+const aiModel =
+  aiProvider === 'deepseek'
+    ? (process.env.DEEPSEEK_MODEL || 'deepseek-chat')
+    : aiProvider === 'openai'
+      ? (process.env.OPENAI_MODEL || 'gpt-3.5-turbo')
+      : aiProvider === 'dashscope'
+        ? (process.env.DASHSCOPE_MODEL || 'qwen-plus')
+        : '';
+
+const aiApiKey =
+  aiProvider === 'deepseek'
+    ? deepSeekApiKey
+    : aiProvider === 'openai'
+      ? openAIApiKey
+      : aiProvider === 'dashscope'
+        ? dashScopeApiKey
+        : '';
+
+const aiBaseURL =
+  aiProvider === 'deepseek'
+    ? (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com')
+    : aiProvider === 'openai'
+      ? process.env.OPENAI_BASE_URL
+      : undefined;
+
 export const config = {
   // AI 配置
   ai: {
-    provider: process.env.DEEPSEEK_API_KEY ? 'deepseek' : (process.env.DASHSCOPE_API_KEY ? 'dashscope' : 'openai'),
-    model: process.env.DEEPSEEK_MODEL || process.env.DASHSCOPE_MODEL || process.env.OPENAI_MODEL || 'qwen-plus',
-    apiKey: process.env.DEEPSEEK_API_KEY || process.env.DASHSCOPE_API_KEY || process.env.OPENAI_API_KEY || '',
-    baseURL: process.env.DEEPSEEK_BASE_URL || process.env.OPENAI_BASE_URL,
+    provider: aiProvider,
+    model: aiModel,
+    apiKey: aiApiKey || '',
+    baseURL: aiBaseURL,
   },
 
   // 服务器配置

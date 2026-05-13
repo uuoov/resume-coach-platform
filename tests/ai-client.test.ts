@@ -34,15 +34,23 @@ describe('AI client retry behavior', () => {
 
   it('prefers DeepSeek OpenAI-compatible config when DEEPSEEK_API_KEY is set', () => {
     process.env.DEEPSEEK_API_KEY = 'test-deepseek-key';
-    process.env.DEEPSEEK_MODEL = 'deepseek-v4-flash';
+    process.env.DEEPSEEK_MODEL = 'deepseek-chat';
     process.env.DASHSCOPE_API_KEY = 'test-dashscope-key';
     process.env.OPENAI_API_KEY = '';
 
     expect(getConfiguredAIClientConfig()).toEqual(expect.objectContaining({
       provider: 'deepseek',
       apiKey: 'test-deepseek-key',
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-chat',
       baseURL: 'https://api.deepseek.com',
     }));
+  });
+
+  it('ignores example placeholder API keys', () => {
+    process.env.DEEPSEEK_API_KEY = 'your_deepseek_api_key_here';
+    process.env.OPENAI_API_KEY = '';
+    process.env.DASHSCOPE_API_KEY = '';
+
+    expect(getConfiguredAIClientConfig()).toBeNull();
   });
 });

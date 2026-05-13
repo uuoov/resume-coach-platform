@@ -63,8 +63,10 @@ cp .env.production .env
 编辑 `.env`，设置以下**必填**变量：
 
 ```env
-# AI 配置
-DASHSCOPE_API_KEY=your_dashscope_api_key_here
+# AI 配置（默认推荐 DeepSeek）
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
 
 # 数据库配置
 DB_USER=resume_user
@@ -159,7 +161,7 @@ resume-coach-platform/
 | **前端**     | React 19, Vite 8, MUI v7         |
 | **数据库**   | PostgreSQL 15 + Prisma ORM       |
 | **缓存**     | Redis 7                          |
-| **AI**       | 阿里云通义千问 (DashScope)          |
+| **AI**       | DeepSeek，兼容 DashScope / OpenAI API |
 | **安全**     | Helmet, CORS, JWT, bcrypt        |
 | **性能**     | Gzip compression, Nginx          |
 | **监控**     | 自定义日志 + 指标收集              |

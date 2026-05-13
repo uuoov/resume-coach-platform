@@ -48,6 +48,15 @@ function shouldRetry(error: unknown): boolean {
   return true;
 }
 
+function readConfiguredApiKey(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  if (!value || value.startsWith('your_') || value.includes('api_key_here')) {
+    return undefined;
+  }
+
+  return value;
+}
+
 /**
  * AI 客户端基类 – 共享重试逻辑
  */
@@ -197,30 +206,33 @@ export function createAIClient(config: AIClientConfig) {
 }
 
 export function getConfiguredAIClientConfig(): AIClientConfig | null {
-  if (process.env.DEEPSEEK_API_KEY) {
+  const deepSeekApiKey = readConfiguredApiKey('DEEPSEEK_API_KEY');
+  const openAIApiKey = readConfiguredApiKey('OPENAI_API_KEY');
+  const dashScopeApiKey = readConfiguredApiKey('DASHSCOPE_API_KEY');
+
+  if (deepSeekApiKey) {
     return {
       provider: 'deepseek',
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+      apiKey: deepSeekApiKey,
+      model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
       baseURL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
     };
   }
 
-  if (process.env.OPENAI_API_KEY) {
+  if (openAIApiKey) {
     return {
       provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: openAIApiKey,
       model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
       baseURL: process.env.OPENAI_BASE_URL,
     };
   }
 
-  if (process.env.DASHSCOPE_API_KEY) {
+  if (dashScopeApiKey) {
     return {
       provider: 'dashscope',
-      apiKey: process.env.DASHSCOPE_API_KEY,
+      apiKey: dashScopeApiKey,
       model: process.env.DASHSCOPE_MODEL || 'qwen-plus',
-      baseURL: process.env.OPENAI_BASE_URL,
     };
   }
 
