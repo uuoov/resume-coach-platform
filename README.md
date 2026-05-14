@@ -189,7 +189,7 @@ npm run build
 cp .env.example .env.production
 # 编辑 .env.production，填写数据库密码、JWT_SECRET、AI API Key、CORS_ORIGIN 等
 
-docker compose build
+docker compose build --no-cache
 docker compose run --rm prisma-migrate
 docker compose up -d
 docker compose logs -f app
@@ -203,6 +203,26 @@ curl http://localhost:8080/api
 ```
 
 默认 Web 入口是 `WEB_HTTP_PORT=8080`，前端和 API 使用同一个来源：页面走 `/`，接口走 `/api`。如果改成 80 端口，设置 `WEB_HTTP_PORT=80` 后重新 `docker compose up -d`。
+
+### PDF 中文预览
+
+PDF 预览和导出依赖容器内的中文字体。生产镜像会安装 `font-noto-cjk`，后端生成 PDF 时会显式注册 Noto CJK、微软雅黑、黑体等中文字体，避免浏览器预览中出现中文乱码、问号或方块。
+
+如果服务器上仍看到 PDF 中文乱码，请优先确认没有复用旧镜像：
+
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+然后检查 app 容器里是否存在 Noto CJK 字体：
+
+```bash
+docker compose exec app sh -lc "fc-list | grep -i 'Noto Sans CJK' | head"
+```
+
+如果应用日志出现 `Chinese PDF font not found, using Helvetica fallback`，说明容器内中文字体没有被找到，需要重新构建镜像，或根据容器里的实际字体路径补充 `src/services/pdf-export.ts` 中的 Linux 字体候选路径。
 
 部署到公网时建议：
 
