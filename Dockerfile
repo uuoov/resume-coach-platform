@@ -47,8 +47,8 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# 设置时区
-RUN apk add --no-cache tzdata
+# 设置时区并安装中文字体，确保 PDF 预览/导出能正确渲染中文
+RUN apk add --no-cache tzdata fontconfig font-noto-cjk && fc-cache -f
 ENV TZ=Asia/Shanghai
 
 # 创建非 root 用户

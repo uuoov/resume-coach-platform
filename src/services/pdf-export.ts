@@ -22,6 +22,27 @@ const COLORS = {
   line: '#e2e8f0',
 };
 
+const PDF_FONTS = {
+  regular: 'ResumeCoachCJK',
+  bold: 'ResumeCoachCJKBold',
+  fallbackRegular: 'Helvetica',
+  fallbackBold: 'Helvetica-Bold',
+  fallbackItalic: 'Helvetica-Oblique',
+} as const;
+
+type FontStyle = 'regular' | 'bold' | 'italic';
+
+interface FontCandidate {
+  regular: string;
+  bold?: string;
+  regularPostscriptName?: string;
+  boldPostscriptName?: string;
+}
+
+type ResumePdfDocument = InstanceType<typeof PDFDocument> & {
+  _resumeCoachFonts?: Record<FontStyle, string>;
+};
+
 /**
  * 生成简历 PDF
  */
@@ -55,19 +76,8 @@ export async function generateResumePDF(options: ExportOptions): Promise<Buffer>
         reject(err);
       });
 
-      // 设置字体（使用中文字体）
-      const fontPath = getChineseFontPath();
-      if (fontPath && fs.existsSync(fontPath)) {
-        try {
-          doc.font(fontPath);
-        } catch (error) {
-          console.warn('Failed to load Chinese font, using default font:', error);
-          doc.font('Helvetica');
-        }
-      } else {
-        console.warn('Chinese font not found, using default font');
-        doc.font('Helvetica');
-      }
+      // 设置并嵌入中文字体，避免浏览器 PDF 预览中出现中文乱码或方块
+      setupDocumentFonts(doc as ResumePdfDocument);
 
       // 根据模板生成内容
       if (template === 'modern') {
@@ -88,47 +98,149 @@ export async function generateResumePDF(options: ExportOptions): Promise<Buffer>
 }
 
 /**
- * 获取中文字体路径
+ * 注册中文字体
  */
-function getChineseFontPath(): string | null {
-  // 项目内置开源中文字体（最高优先级）
-  const builtinFont = path.resolve(__dirname, '../assets/fonts/SimHei.ttf');
-  if (fs.existsSync(builtinFont)) {
-    return builtinFont;
-  }
+function setupDocumentFonts(doc: ResumePdfDocument) {
+  const candidates = getChineseFontCandidates();
 
-  // Windows 系统字体路径 - 强制使用 .ttf 避免 pdfkit 的 ttc subset 报错
-  const windowsFonts = [
-    'C:\\Windows\\Fonts\\simhei.ttf', // 黑体 (TrueType, safe for pdfkit)
-    'C:\\Windows\\Fonts\\simsunb.ttf', 
-    'C:\\Windows\\Fonts\\msyh.ttf', // 如果刚好有 ttf 版本的微軟雅黑
-  ];
+  for (const candidate of candidates) {
+    if (!fs.existsSync(candidate.regular)) {
+      continue;
+    }
 
-  // macOS 系统字体路径
-  const macFonts = [
-    '/System/Library/Fonts/PingFang.ttc',
-    '/System/Library/Fonts/STHeiti Light.ttc',
-  ];
+    const boldFont = candidate.bold && fs.existsSync(candidate.bold)
+      ? candidate.bold
+      : candidate.regular;
+    const boldPostscriptName = boldFont === candidate.regular
+      ? candidate.regularPostscriptName
+      : candidate.boldPostscriptName;
 
-  // Linux 系统字体路径
-  const linuxFonts = [
-    '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
-    '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
-  ];
-
-  const platform = process.platform;
-
-  const fonts = platform === 'win32' ? windowsFonts :
-                platform === 'darwin' ? macFonts : linuxFonts;
-
-  // 检查字体文件是否存在
-  for (const fontPath of fonts) {
-    if (fs.existsSync(fontPath)) {
-      return fontPath;
+    try {
+      doc.registerFont(PDF_FONTS.regular, candidate.regular, candidate.regularPostscriptName);
+      doc.registerFont(PDF_FONTS.bold, boldFont, boldPostscriptName);
+      doc.font(PDF_FONTS.regular);
+      doc.font(PDF_FONTS.bold);
+      doc.font(PDF_FONTS.regular);
+      doc._resumeCoachFonts = {
+        regular: PDF_FONTS.regular,
+        bold: PDF_FONTS.bold,
+        italic: PDF_FONTS.regular,
+      };
+      return;
+    } catch (error) {
+      console.warn(`Failed to load PDF font ${candidate.regular}:`, error);
     }
   }
 
-  return null;
+  console.warn('Chinese PDF font not found, using Helvetica fallback. Chinese text may not render correctly.');
+  doc.font(PDF_FONTS.fallbackRegular);
+  doc._resumeCoachFonts = {
+    regular: PDF_FONTS.fallbackRegular,
+    bold: PDF_FONTS.fallbackBold,
+    italic: PDF_FONTS.fallbackItalic,
+  };
+}
+
+/**
+ * 获取候选中文字体。生产 Docker 镜像会安装 Noto CJK；本地开发则优先使用系统字体。
+ */
+function getChineseFontCandidates(): FontCandidate[] {
+  const assetFonts = [
+    path.resolve(process.cwd(), 'src/assets/fonts'),
+    path.resolve(process.cwd(), 'dist/assets/fonts'),
+    path.resolve(__dirname, '../assets/fonts'),
+    path.resolve(__dirname, '../../src/assets/fonts'),
+  ];
+
+  const bundledCandidates = assetFonts.flatMap((fontDir) => [
+    {
+      regular: path.join(fontDir, 'NotoSansCJKsc-Regular.otf'),
+      bold: path.join(fontDir, 'NotoSansCJKsc-Bold.otf'),
+    },
+    {
+      regular: path.join(fontDir, 'NotoSansSC-Regular.ttf'),
+      bold: path.join(fontDir, 'NotoSansSC-Bold.ttf'),
+    },
+    {
+      regular: path.join(fontDir, 'SimHei.ttf'),
+      bold: path.join(fontDir, 'SimHei.ttf'),
+    },
+  ]);
+
+  const windowsCandidates: FontCandidate[] = [
+    {
+      regular: 'C:\\Windows\\Fonts\\msyh.ttc',
+      bold: 'C:\\Windows\\Fonts\\msyhbd.ttc',
+      regularPostscriptName: 'MicrosoftYaHei',
+      boldPostscriptName: 'MicrosoftYaHei-Bold',
+    },
+    {
+      regular: 'C:\\Windows\\Fonts\\simhei.ttf',
+      bold: 'C:\\Windows\\Fonts\\simhei.ttf',
+    },
+    {
+      regular: 'C:\\Windows\\Fonts\\simsun.ttc',
+      bold: 'C:\\Windows\\Fonts\\simsunb.ttf',
+      regularPostscriptName: 'SimSun',
+    },
+  ];
+
+  const macCandidates: FontCandidate[] = [
+    {
+      regular: '/System/Library/Fonts/PingFang.ttc',
+      bold: '/System/Library/Fonts/PingFang.ttc',
+      regularPostscriptName: 'PingFangSC-Regular',
+      boldPostscriptName: 'PingFangSC-Semibold',
+    },
+    {
+      regular: '/System/Library/Fonts/STHeiti Light.ttc',
+      bold: '/System/Library/Fonts/STHeiti Medium.ttc',
+    },
+  ];
+
+  const linuxCandidates: FontCandidate[] = [
+    {
+      regular: '/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc',
+      bold: '/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc',
+      regularPostscriptName: 'NotoSansCJKsc-Regular',
+      boldPostscriptName: 'NotoSansCJKsc-Bold',
+    },
+    {
+      regular: '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+      bold: '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc',
+      regularPostscriptName: 'NotoSansCJKsc-Regular',
+      boldPostscriptName: 'NotoSansCJKsc-Bold',
+    },
+    {
+      regular: '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+      bold: '/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc',
+      regularPostscriptName: 'NotoSansCJKsc-Regular',
+      boldPostscriptName: 'NotoSansCJKsc-Bold',
+    },
+    {
+      regular: '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+      bold: '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+    },
+    {
+      regular: '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+      bold: '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+      regularPostscriptName: 'WenQuanYiZenHei',
+      boldPostscriptName: 'WenQuanYiZenHei',
+    },
+    {
+      regular: '/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc',
+      bold: '/usr/share/fonts/wqy-zenhei/wqy-zenhei.ttc',
+      regularPostscriptName: 'WenQuanYiZenHei',
+      boldPostscriptName: 'WenQuanYiZenHei',
+    },
+  ];
+
+  return [
+    ...bundledCandidates,
+    ...windowsCandidates,
+    ...macCandidates,
+    ...linuxCandidates,
+  ];
 }
 
 /**
@@ -281,15 +393,14 @@ function generateMinimalTemplate(doc: InstanceType<typeof PDFDocument>, resume: 
 /**
  * 获取字体
  */
-function getFont(doc: any, type: 'regular' | 'bold' | 'italic' = 'regular'): string {
-  const chineseFontPath = getChineseFontPath();
-
-  if (chineseFontPath && fs.existsSync(chineseFontPath)) {
-    return chineseFontPath;
+function getFont(doc: ResumePdfDocument, type: FontStyle = 'regular'): string {
+  const fonts = doc._resumeCoachFonts;
+  if (fonts) {
+    return fonts[type] || fonts.regular;
   }
 
-  return type === 'bold' ? 'Helvetica-Bold' :
-         type === 'italic' ? 'Helvetica-Oblique' : 'Helvetica';
+  return type === 'bold' ? PDF_FONTS.fallbackBold :
+         type === 'italic' ? PDF_FONTS.fallbackItalic : PDF_FONTS.fallbackRegular;
 }
 
 function getContentWidth(doc: InstanceType<typeof PDFDocument>): number {
