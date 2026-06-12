@@ -1,5 +1,7 @@
 # Resume Coach Platform
 
+> 语言 / Languages: [中文](#resume-coach-platform) | [English](#english-version)
+
 AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定向匹配分析与简历优化建议。
 
 它不是一个简历模板工具，而是一个“投递前诊断 + 一岗一版优化”工具：上传简历、输入 JD，系统会解析双方结构化信息，计算匹配度，指出差距，并给出可执行的优化建议。
@@ -46,6 +48,19 @@ flowchart LR
   Optimizer --> AI
   Parser --> AI
 ```
+
+## 演示效果 / Demo Preview
+
+下面是内置 demo 测试的预期效果。示例会把一份 Full-stack 简历和目标 JD 进行匹配，输出整体匹配分、维度得分、优势项和差距项。
+
+![Resume Coach Platform demo preview](./docs/assets/demo-preview.svg)
+
+| 输入 | 预期效果 |
+| --- | --- |
+| 简历：Full-stack Engineer，具备 React、TypeScript、Node.js、PostgreSQL 和 SaaS 项目经历 | `overallScore >= 90`，技能匹配 `100`，行业匹配 `100` |
+| JD：Senior Full-stack Engineer，要求 React、TypeScript、Node.js，偏好 PostgreSQL 和 SaaS 背景 | React 会被识别为优势项，不会被误判为技能差距 |
+
+完整演示说明见 [docs/DEMO.md](./docs/DEMO.md)，可运行测试见 [tests/demo.matching.test.ts](./tests/demo.matching.test.ts)。
 
 ## 快速开始
 
@@ -149,6 +164,53 @@ npm run prisma:migrate
 cd frontend
 npm run lint
 npm run build
+```
+
+## Demo 测试 / Demo Test
+
+项目已新增一个可运行的 demo 测试：[tests/demo.matching.test.ts](./tests/demo.matching.test.ts)。它适合作为新贡献者的第一条验证路径：不依赖真实数据库，不调用外部 AI 服务，只用规则引擎验证“简历 + JD -> 匹配结果”的核心链路。
+
+This repository includes a runnable demo test in [tests/demo.matching.test.ts](./tests/demo.matching.test.ts). It is a good first verification path for contributors: no real database, no external AI provider, and a focused check of the core `resume + JD -> match result` workflow.
+
+运行单个 demo 测试 / Run only the demo test:
+
+```bash
+npx jest --runInBand --runTestsByPath tests/demo.matching.test.ts
+```
+
+运行全部测试 / Run the full test suite:
+
+```bash
+npm test
+```
+
+测试会验证 / The test verifies:
+
+- 关闭 DeepSeek、DashScope、OpenAI 等外部 AI Key 后，会使用本地规则引擎。
+- Full-stack 示例简历能匹配 React、TypeScript、Node.js、PostgreSQL 和 SaaS 背景要求。
+- 输出包含高匹配分、技能优势项，并且不会把已具备的 React 标记为差距。
+
+核心断言如下，完整示例见 [tests/demo.matching.test.ts](./tests/demo.matching.test.ts)：
+
+Core assertions are shown below. See [tests/demo.matching.test.ts](./tests/demo.matching.test.ts) for the full sample data:
+
+```ts
+const result = await calculateMatch(demoResume, targetJD);
+
+expect(result.aiPowered).toBe(false);
+expect(result.overallScore).toBeGreaterThanOrEqual(90);
+expect(result.dimensions.skill.score).toBe(100);
+expect(result.dimensions.industry.score).toBe(100);
+expect(result.strengths).toEqual(
+  expect.arrayContaining([
+    expect.objectContaining({ item: 'React', matched: true }),
+  ])
+);
+expect(result.gaps).not.toEqual(
+  expect.arrayContaining([
+    expect.objectContaining({ item: 'React' }),
+  ])
+);
 ```
 
 ## API 概览
@@ -285,6 +347,7 @@ resume-coach-platform/
 - 简历解析
 - JD 分析
 - 匹配度计算
+- Demo 匹配测试
 - 优化建议
 - AI Client 配置
 - 公司信息接口
@@ -296,6 +359,223 @@ npm run lint
 npm run build
 npm test
 ```
+
+## English Version
+
+Resume Coach Platform is an AI-powered resume coaching platform for targeted job applications. It compares a candidate resume with a company-specific job description, calculates match scores, identifies gaps, and produces actionable optimization suggestions.
+
+It is not a resume template generator. It is a pre-application diagnosis and one-resume-per-role optimization tool: upload a resume, enter a JD, and the system extracts structured data, evaluates fit, and recommends improvements.
+
+### Features
+
+- Resume parsing: supports PDF and Word files and extracts profile, education, work experience, projects, and skills.
+- JD analysis: extracts hard skills, soft skills, experience requirements, education requirements, and keywords.
+- Match scoring: evaluates fit across hard skills, project/work experience, education, soft skills, and industry background.
+- Optimization advice: generates prioritized, actionable suggestions and can rewrite content through an AI provider.
+- PDF preview and export: supports Chinese resume rendering, contact info, dates, lists, and layout tuning.
+- Authentication: register, login, JWT auth, and PostgreSQL persistence for production.
+- Resume versioning: create different resume versions for different job applications.
+- Company information lookup: supports built-in data and optional company API integrations.
+- Monitoring: provides health checks and basic runtime metrics.
+
+### Tech Stack
+
+| Module | Technology |
+| --- | --- |
+| Backend | Node.js, Express, TypeScript |
+| Frontend | React, Vite, MUI |
+| Database | PostgreSQL, Prisma ORM |
+| AI Provider | DeepSeek / DashScope / OpenAI-compatible API |
+| File Parsing | pdf-parse, mammoth |
+| PDF Generation | PDFKit |
+| Testing | Jest, Supertest |
+| Deployment | Docker, Docker Compose, Nginx |
+
+### Demo Preview
+
+The bundled demo matches a sample full-stack resume against a target Senior Full-stack Engineer JD, then shows the expected match score, dimension scores, strengths, and gaps.
+
+![Resume Coach Platform demo preview](./docs/assets/demo-preview.svg)
+
+| Input | Expected result |
+| --- | --- |
+| Resume: Full-stack Engineer with React, TypeScript, Node.js, PostgreSQL, and SaaS project experience | `overallScore >= 90`, skill score `100`, industry score `100` |
+| JD: Senior Full-stack Engineer requiring React, TypeScript, Node.js, with PostgreSQL and SaaS preferred | React is reported as a strength and is not reported as a skill gap |
+
+See [docs/DEMO.md](./docs/DEMO.md) for the complete demo and [tests/demo.matching.test.ts](./tests/demo.matching.test.ts) for the runnable test.
+
+### Quick Start
+
+Requirements:
+
+- Node.js 20+
+- npm 10+
+- PostgreSQL 14+, PostgreSQL 15 recommended
+- Optional: Docker and Docker Compose
+
+Install dependencies:
+
+```bash
+npm install
+cd frontend
+npm install
+cd ..
+```
+
+Create an environment file:
+
+```bash
+cp .env.example .env
+```
+
+Minimum required variables:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/resume_coach?schema=public"
+JWT_SECRET=replace_with_a_long_random_secret
+
+# Choose one provider: DeepSeek / DashScope / OpenAI-compatible
+DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+Initialize the database:
+
+```bash
+npm run prisma:generate
+npx prisma db push
+```
+
+Start the backend:
+
+```bash
+npm run dev
+```
+
+Default backend URL:
+
+```txt
+http://localhost:3001
+```
+
+Start the frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Default frontend URL:
+
+```txt
+http://localhost:5173
+```
+
+### Demo Test
+
+A runnable demo test is included at [tests/demo.matching.test.ts](./tests/demo.matching.test.ts). It verifies the matching engine with a sample full-stack resume and target JD, without requiring a real database or external AI provider.
+
+Run the demo test:
+
+```bash
+npx jest --runInBand --runTestsByPath tests/demo.matching.test.ts
+```
+
+Run the full test suite:
+
+```bash
+npm test
+```
+
+### Common Commands
+
+```bash
+# Backend checks
+npm run lint
+npm run build
+npm test
+
+# Database
+npm run prisma:generate
+npm run prisma:migrate
+
+# Frontend
+cd frontend
+npm run lint
+npm run build
+```
+
+### API Overview
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/health` | Health check |
+| GET | `/metrics` | Basic runtime metrics |
+| POST | `/api/auth/register` | Register a user |
+| POST | `/api/auth/login` | Login |
+| GET | `/api/auth/me` | Get current user |
+| POST | `/api/resume/parse` | Upload and parse a resume |
+| POST | `/api/resume/export-pdf` | Export resume PDF |
+| POST | `/api/resume/preview-pdf` | Preview resume PDF |
+| GET | `/api/resume/:id/versions` | List resume versions |
+| POST | `/api/resume/:id/versions` | Create a resume version |
+| GET | `/api/resume/version/:versionId` | Get a specific version |
+| POST | `/api/resume/version/:versionId/revert` | Revert to a version |
+| POST | `/api/jd/analyze` | Analyze a JD |
+| POST | `/api/match/calculate` | Calculate match score |
+| POST | `/api/optimize/suggest` | Generate optimization suggestions |
+| GET | `/api/company/query` | Query company information |
+| POST | `/api/company/auto-query` | Auto-query company information |
+
+### Docker Deployment
+
+The repository includes `Dockerfile` and `docker-compose.yml` with PostgreSQL 15, Redis 7, the Express app, Nginx reverse proxy, and a Prisma migration service.
+
+```bash
+cp .env.example .env.production
+# Edit .env.production and configure database password, JWT_SECRET, AI API key, CORS_ORIGIN, and other values.
+
+docker compose build --no-cache
+docker compose run --rm prisma-migrate
+docker compose up -d
+docker compose logs -f app
+```
+
+Health checks:
+
+```bash
+curl http://localhost:8080/health
+curl http://localhost:8080/api
+```
+
+### Project Structure
+
+```txt
+resume-coach-platform/
+├── src/                    # Express backend source
+├── frontend/               # React + Vite frontend
+├── prisma/                 # Prisma schema
+├── tests/                  # Jest tests
+├── docs/                   # Product and prompt docs
+├── nginx/                  # Nginx config
+├── uploads/                # Local upload directory
+├── Dockerfile
+├── docker-compose.yml
+└── DEPLOYMENT.md
+```
+
+### Security
+
+- Do not commit real `.env` files.
+- Do not store GitHub tokens, AI API keys, or database passwords in code or Git config.
+- Production registration must use PostgreSQL persistence.
+- Test accounts and in-memory auth fallbacks are for local testing only.
+- `uploads` is ignored by Git except for `uploads/.gitkeep`.
+
+### Test Status
+
+Current tests cover base API routes, authentication, resume parsing, JD analysis, matching, optimization suggestions, AI client configuration, company routes, and the demo matching test.
 
 ## License
 

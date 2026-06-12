@@ -1,0 +1,43 @@
+<svg width="1080" height="620" viewBox="0 0 1080 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Resume Coach Platform demo preview</title>
+  <desc id="desc">A static demo preview showing a resume and job description being matched with a score of 100, strengths, and no React skill gap.</desc>
+  <rect width="1080" height="620" rx="24" fill="#F7F9FC"/>
+  <rect x="32" y="32" width="1016" height="556" rx="18" fill="#FFFFFF" stroke="#D8E0EA"/>
+
+  <text x="72" y="88" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700">Resume Coach Platform Demo</text>
+  <text x="72" y="122" fill="#667085" font-family="Inter, Arial, sans-serif" font-size="16">Expected result for the bundled demo matching test</text>
+
+  <rect x="72" y="162" width="290" height="230" rx="14" fill="#F4F8FF" stroke="#D6E4FF"/>
+  <text x="96" y="202" fill="#1D4ED8" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Sample Resume</text>
+  <text x="96" y="238" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Alex Chen</text>
+  <text x="96" y="268" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Full-stack engineer</text>
+  <text x="96" y="298" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">SaaS analytics dashboard</text>
+  <text x="96" y="328" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">React / TypeScript / Node.js</text>
+  <text x="96" y="358" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">PostgreSQL / Cross-functional work</text>
+
+  <rect x="396" y="162" width="290" height="230" rx="14" fill="#F7F7FE" stroke="#DDD6FE"/>
+  <text x="420" y="202" fill="#6D28D9" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Target JD</text>
+  <text x="420" y="238" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">Senior Full-stack Engineer</text>
+  <text x="420" y="268" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Required: React, TypeScript</text>
+  <text x="420" y="298" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Required: Node.js</text>
+  <text x="420" y="328" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Preferred: PostgreSQL</text>
+  <text x="420" y="358" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Industry preference: SaaS</text>
+
+  <rect x="720" y="162" width="256" height="230" rx="14" fill="#F0FDF4" stroke="#BBF7D0"/>
+  <text x="744" y="202" fill="#15803D" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">Expected Output</text>
+  <text x="744" y="266" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="800">100</text>
+  <text x="850" y="266" fill="#15803D" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">match score</text>
+  <text x="744" y="318" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Skill score: 100</text>
+  <text x="744" y="348" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">Industry score: 100</text>
+  <text x="744" y="378" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">AI powered: false</text>
+
+  <rect x="72" y="430" width="436" height="96" rx="14" fill="#FFFFFF" stroke="#D8E0EA"/>
+  <text x="96" y="466" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Strengths</text>
+  <circle cx="101" cy="497" r="5" fill="#16A34A"/>
+  <text x="116" y="502" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">React is matched and listed as a strength</text>
+
+  <rect x="540" y="430" width="436" height="96" rx="14" fill="#FFFFFF" stroke="#D8E0EA"/>
+  <text x="564" y="466" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700">Gaps</text>
+  <circle cx="569" cy="497" r="5" fill="#16A34A"/>
+  <text x="584" y="502" fill="#475467" font-family="Inter, Arial, sans-serif" font-size="14">React is not reported as a missing skill</text>
+</svg>
