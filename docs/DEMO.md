@@ -18,6 +18,18 @@ The screenshots below were captured from a real local run of the React + Express
 
 ![Live match result page](./assets/live-match-result.png)
 
+### Scoring Details
+
+The match page separates the score into an overall result and dimension-level evidence.
+
+| Overall score | Dimension scores |
+| --- | --- |
+| ![Overall match score](./assets/live-score-summary.png) | ![Dimension scores](./assets/live-dimension-scores.png) |
+
+| Strengths | Improvement areas |
+| --- | --- |
+| ![Strengths](./assets/live-strengths.png) | ![Improvement areas](./assets/live-gaps.png) |
+
 Observed result:
 
 | Field | Value |

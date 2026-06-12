@@ -2,9 +2,22 @@
 
 > 语言 / Languages: [中文](#resume-coach-platform) | [English](#english-version)
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6.svg)](https://www.typescriptlang.org/)
+
 AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定向匹配分析与简历优化建议。
 
 它不是一个简历模板工具，而是一个“投递前诊断 + 一岗一版优化”工具：上传简历、输入 JD，系统会解析双方结构化信息，计算匹配度，指出差距，并给出可执行的优化建议。
+
+## 为什么值得 Star
+
+- 真实产品链路：简历解析、JD 分析、匹配评分、优化建议、PDF 导出都已串起来。
+- 对求职场景友好：不是泛泛改简历，而是围绕“目标公司 + 目标岗位”做一岗一版优化。
+- 可本地快速体验：内置测试账号和测试简历，不配置数据库和 AI Key 也能跑通核心 demo。
+- 适合作为参考项目：包含 React + Express + TypeScript + Prisma + Docker 的完整工程结构。
+- 对中文简历友好：包含中文 PDF 字体、部署检查和中文内容解析相关处理。
 
 ## 功能特性
 
@@ -55,6 +68,16 @@ flowchart LR
 
 ![实际运行的匹配度分析页](./docs/assets/live-match-result.png)
 
+### 评分细节
+
+| 总分 | 维度得分 |
+| --- | --- |
+| ![整体匹配度评分](./docs/assets/live-score-summary.png) | ![各维度评分](./docs/assets/live-dimension-scores.png) |
+
+| 核心优势 | 待提升项 |
+| --- | --- |
+| ![核心优势](./docs/assets/live-strengths.png) | ![待提升项](./docs/assets/live-gaps.png) |
+
 优化建议页会展示“修改前内容”和“AI 深度润色后”的对照，并支持一键应用到当前简历：
 
 ![实际运行的简历修改前后对照](./docs/assets/live-before-after-card.png)
@@ -65,6 +88,8 @@ flowchart LR
 | JD：高级前端工程师，要求 React、TypeScript、Node.js、SaaS 数据看板、性能优化和项目推进 | 给出按优先级分组的优化建议，并展示可应用的改写文案 |
 
 完整演示说明见 [docs/DEMO.md](./docs/DEMO.md)，可运行测试见 [tests/demo.matching.test.ts](./tests/demo.matching.test.ts)。
+
+项目路线图见 [ROADMAP.md](./ROADMAP.md)，贡献说明见 [CONTRIBUTING.md](./CONTRIBUTING.md)，GitHub 增长建议见 [docs/STAR_GROWTH.md](./docs/STAR_GROWTH.md)。
 
 ## 快速开始
 
@@ -370,6 +395,14 @@ Resume Coach Platform is an AI-powered resume coaching platform for targeted job
 
 It is not a resume template generator. It is a pre-application diagnosis and one-resume-per-role optimization tool: upload a resume, enter a JD, and the system extracts structured data, evaluates fit, and recommends improvements.
 
+### Why Star This Project
+
+- End-to-end product flow: resume parsing, JD analysis, scoring, optimization suggestions, and PDF export are connected.
+- Job-targeted by design: the core workflow optimizes one resume for one company and one role.
+- Easy local demo: the built-in test account and resume template let you try the core workflow without a database or AI key.
+- Useful full-stack reference: React, Express, TypeScript, Prisma, Docker, auth, monitoring, and tests live in one repo.
+- Chinese resume ready: includes Chinese PDF font handling, deployment checks, and Chinese content workflows.
+
 ### Features
 
 - Resume parsing: supports PDF and Word files and extracts profile, education, work experience, projects, and skills.
@@ -401,6 +434,16 @@ The screenshots below come from an actual local run of the website: logging in w
 
 ![Live match result page](./docs/assets/live-match-result.png)
 
+#### Scoring Details
+
+| Overall score | Dimension scores |
+| --- | --- |
+| ![Overall match score](./docs/assets/live-score-summary.png) | ![Dimension scores](./docs/assets/live-dimension-scores.png) |
+
+| Strengths | Improvement areas |
+| --- | --- |
+| ![Strengths](./docs/assets/live-strengths.png) | ![Improvement areas](./docs/assets/live-gaps.png) |
+
 The optimization page shows a before/after rewrite comparison and lets users apply the suggested text to the current resume:
 
 ![Live before and after resume rewrite](./docs/assets/live-before-after-card.png)
@@ -411,6 +454,8 @@ The optimization page shows a before/after rewrite comparison and lets users app
 | JD: Senior frontend engineer requiring React, TypeScript, Node.js, SaaS dashboards, performance optimization, and project delivery | Produces prioritized optimization suggestions with applicable rewrite copy |
 
 See [docs/DEMO.md](./docs/DEMO.md) for the complete demo and [tests/demo.matching.test.ts](./tests/demo.matching.test.ts) for the runnable test.
+
+See [ROADMAP.md](./ROADMAP.md) for planned work, [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidance, and [docs/STAR_GROWTH.md](./docs/STAR_GROWTH.md) for a practical GitHub growth checklist.
 
 ### Quick Start
 

@@ -15,6 +15,7 @@ uploads/*
 !uploads/.gitkeep
 tmp/
 coverage/
+.demo-*/
 
 .DS_Store
 Thumbs.db
