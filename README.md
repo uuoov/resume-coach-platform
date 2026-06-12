@@ -51,14 +51,18 @@ flowchart LR
 
 ## 演示效果 / Demo Preview
 
-下面是内置 demo 测试的预期效果。示例会把一份 Full-stack 简历和目标 JD 进行匹配，输出整体匹配分、维度得分、优势项和差距项。
+下面截图来自本地实际跑通的网站流程：登录测试账号，使用内置简历模板，输入目标 JD，查看匹配度，再进入优化建议页查看简历修改前后对照。
 
-![Resume Coach Platform demo preview](./docs/assets/demo-preview.svg)
+![实际运行的匹配度分析页](./docs/assets/live-match-result.png)
+
+优化建议页会展示“修改前内容”和“AI 深度润色后”的对照，并支持一键应用到当前简历：
+
+![实际运行的简历修改前后对照](./docs/assets/live-before-after-card.png)
 
 | 输入 | 预期效果 |
 | --- | --- |
-| 简历：Full-stack Engineer，具备 React、TypeScript、Node.js、PostgreSQL 和 SaaS 项目经历 | `overallScore >= 90`，技能匹配 `100`，行业匹配 `100` |
-| JD：Senior Full-stack Engineer，要求 React、TypeScript、Node.js，偏好 PostgreSQL 和 SaaS 背景 | React 会被识别为优势项，不会被误判为技能差距 |
+| 简历：内置测试模板，包含 React、TypeScript、Node.js、低代码平台、前端架构升级经历 | 生成匹配度分析报告，识别核心优势和待提升项 |
+| JD：高级前端工程师，要求 React、TypeScript、Node.js、SaaS 数据看板、性能优化和项目推进 | 给出按优先级分组的优化建议，并展示可应用的改写文案 |
 
 完整演示说明见 [docs/DEMO.md](./docs/DEMO.md)，可运行测试见 [tests/demo.matching.test.ts](./tests/demo.matching.test.ts)。
 
@@ -393,14 +397,18 @@ It is not a resume template generator. It is a pre-application diagnosis and one
 
 ### Demo Preview
 
-The bundled demo matches a sample full-stack resume against a target Senior Full-stack Engineer JD, then shows the expected match score, dimension scores, strengths, and gaps.
+The screenshots below come from an actual local run of the website: logging in with a test account, loading the built-in resume template, entering a target JD, reviewing the match report, and opening the resume rewrite suggestions.
 
-![Resume Coach Platform demo preview](./docs/assets/demo-preview.svg)
+![Live match result page](./docs/assets/live-match-result.png)
+
+The optimization page shows a before/after rewrite comparison and lets users apply the suggested text to the current resume:
+
+![Live before and after resume rewrite](./docs/assets/live-before-after-card.png)
 
 | Input | Expected result |
 | --- | --- |
-| Resume: Full-stack Engineer with React, TypeScript, Node.js, PostgreSQL, and SaaS project experience | `overallScore >= 90`, skill score `100`, industry score `100` |
-| JD: Senior Full-stack Engineer requiring React, TypeScript, Node.js, with PostgreSQL and SaaS preferred | React is reported as a strength and is not reported as a skill gap |
+| Resume: built-in test template with React, TypeScript, Node.js, low-code platform work, and frontend architecture migration experience | Produces a match report with strengths and improvement areas |
+| JD: Senior frontend engineer requiring React, TypeScript, Node.js, SaaS dashboards, performance optimization, and project delivery | Produces prioritized optimization suggestions with applicable rewrite copy |
 
 See [docs/DEMO.md](./docs/DEMO.md) for the complete demo and [tests/demo.matching.test.ts](./tests/demo.matching.test.ts) for the runnable test.
 
