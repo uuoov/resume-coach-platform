@@ -3,6 +3,8 @@
 # 阶段 1: 构建前端
 FROM node:20-alpine AS frontend-builder
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app/frontend
 
 # 复制前端依赖文件
@@ -19,6 +21,8 @@ RUN npm run build
 
 # 阶段 2: 构建后端
 FROM node:20-alpine AS backend-builder
+
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 WORKDIR /app
 
@@ -39,16 +43,20 @@ RUN npm run build
 # 阶段 3: 前端 Nginx 镜像
 FROM nginx:1.24-alpine AS frontend-runtime
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --from=frontend-builder /app/frontend/dist /var/www/html
 
 # 阶段 4: 生产镜像
 FROM node:20-alpine AS production
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 
 # 设置时区并安装中文字体，确保 PDF 预览/导出能正确渲染中文
-RUN apk add --no-cache tzdata fontconfig font-noto-cjk && fc-cache -f
+RUN apk add --no-cache tzdata fontconfig font-noto-cjk openssl openssl-dev && fc-cache -f
 ENV TZ=Asia/Shanghai
 
 # 创建非 root 用户
