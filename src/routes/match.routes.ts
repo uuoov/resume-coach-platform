@@ -1,16 +1,22 @@
 /**
  * 匹配度计算路由
+ *
+ * 鉴权策略：optionalAuth
  */
 
 import { Router, type Request, type Response } from 'express';
+import { optionalAuth } from '../middleware/auth-middleware';
+import { aiRateLimiter } from '../middleware/rate-limiter';
+import { calculateMatch } from '../services/matching-engine';
+import { createMatchRecord } from '../repositories/match-repository';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
 // 匹配度计算
-router.post('/calculate', async (req: Request, res: Response) => {
+router.post('/calculate', optionalAuth, aiRateLimiter, async (req: Request, res: Response) => {
   try {
-    const { calculateMatch } = await import('../services/matching-engine');
-    const { resume, jdAnalysis } = req.body;
+    const { resume, jdAnalysis, resumeId, jdId } = req.body;
 
     if (!resume || !jdAnalysis) {
       return res.status(400).json({ error: '缺少 resume 或 jdAnalysis 参数' });
@@ -18,22 +24,24 @@ router.post('/calculate', async (req: Request, res: Response) => {
 
     const matchResult = await calculateMatch(resume, jdAnalysis);
 
-    if (req.body.resumeId && req.body.jdId) {
+    // 仅在已登录且提供了 resumeId/jdId 的情况下记录历史
+    if (req.userId && resumeId && jdId) {
       try {
-        const { createMatchRecord } = await import('../repositories/match-repository');
         await createMatchRecord({
-          resumeId: req.body.resumeId,
-          jdId: req.body.jdId,
+          resumeId,
+          jdId,
           result: matchResult,
         });
       } catch (dbError) {
-        console.error('保存数据库失败:', dbError);
+        logger.warn('匹配记录入库失败', 'match-routes', {
+          error: dbError instanceof Error ? dbError.message : String(dbError),
+        });
       }
     }
 
     res.json({ success: true, data: matchResult });
   } catch (error) {
-    console.error('匹配度计算失败:', error);
+    logger.error('匹配度计算失败', error instanceof Error ? error : undefined, 'match-routes');
     res.status(500).json({ error: '匹配度计算失败', message: String(error) });
   }
 });

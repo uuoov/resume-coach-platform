@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { prisma, prismaAvailable } from './database';
+import { requirePrisma, prismaAvailable } from './database';
+import { config } from '../config';
 
 const JWT_EXPIRES_IN = '24h';
 
@@ -9,11 +10,12 @@ const memoryUsers = new Map<string, any>();
 let nextUserId = 1;
 
 // 初始化一个默认测试账号，方便在没有数据库时登录测试
+// 使用配置的 bcryptRounds 与生产路径一致
 memoryUsers.set('user-0', {
   id: 'user-0',
   email: 'admin@example.com',
   name: '测试管理员',
-  password: bcrypt.hashSync('123456', 10),
+  password: bcrypt.hashSync('123456', config.security.bcryptRounds),
   createdAt: new Date(),
   updatedAt: new Date(),
 });
@@ -157,9 +159,10 @@ export class AuthService {
 
   /**
    * 哈希密码
+   * 使用配置中的 bcryptRounds（默认 12），与 docker-compose 注入项对齐
    */
   static async hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(config.security.bcryptRounds);
     return bcrypt.hash(password, salt);
   }
 
@@ -221,7 +224,7 @@ export class AuthService {
         };
       }
 
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await requirePrisma().user.findUnique({
         where: { email },
         select: { id: true },
       });
@@ -235,7 +238,7 @@ export class AuthService {
 
       const hashedPassword = await this.hashPassword(data.password);
 
-      const user = await prisma.user.create({
+      const user = await requirePrisma().user.create({
         data: {
           email,
           name,
@@ -320,7 +323,7 @@ export class AuthService {
         return { success: true, data: { user: userWithoutPassword, token } };
       }
 
-      const user = await prisma.user.findUnique({
+      const user = await requirePrisma().user.findUnique({
         where: { email },
         select: {
           id: true,
@@ -395,7 +398,7 @@ export class AuthService {
     }
 
     try {
-      const dbUser = await prisma.user.findUnique({
+      const dbUser = await requirePrisma().user.findUnique({
         where: { id: decoded.userId },
         select: {
           id: true,

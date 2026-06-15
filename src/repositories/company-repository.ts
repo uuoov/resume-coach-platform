@@ -3,7 +3,7 @@
  * 封装公司信息的 CRUD 操作
  */
 
-import { prisma } from '../services/database';
+import { requirePrisma } from '../services/database';
 
 export interface CreateCompanyInput {
   name: string;
@@ -20,7 +20,7 @@ export interface CreateCompanyInput {
  * 创建公司记录
  */
 export async function createCompany(input: CreateCompanyInput) {
-  return prisma.company.create({
+  return requirePrisma().company.create({
     data: input,
   });
 }
@@ -29,7 +29,7 @@ export async function createCompany(input: CreateCompanyInput) {
  * 根据名称获取公司信息
  */
 export async function getCompanyByName(name: string) {
-  return prisma.company.findUnique({
+  return requirePrisma().company.findUnique({
     where: { name },
   });
 }
@@ -38,7 +38,7 @@ export async function getCompanyByName(name: string) {
  * 根据 ID 获取公司信息
  */
 export async function getCompanyById(id: string) {
-  return prisma.company.findUnique({
+  return requirePrisma().company.findUnique({
     where: { id },
   });
 }
@@ -47,7 +47,7 @@ export async function getCompanyById(id: string) {
  * 更新公司信息
  */
 export async function updateCompany(id: string, data: Partial<CreateCompanyInput>) {
-  return prisma.company.update({
+  return requirePrisma().company.update({
     where: { id },
     data,
   });
@@ -57,7 +57,7 @@ export async function updateCompany(id: string, data: Partial<CreateCompanyInput
  * 搜索公司信息
  */
 export async function searchCompanies(keyword: string) {
-  return prisma.company.findMany({
+  return requirePrisma().company.findMany({
     where: {
       OR: [
         { name: { contains: keyword, mode: 'insensitive' } },

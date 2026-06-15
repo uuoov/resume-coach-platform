@@ -5,7 +5,7 @@
  * 注意：此模块依赖 Prisma，如果 Prisma 未生成，请使用 try-catch 包裹导入
  */
 
-import { prisma } from '../services/database';
+import { requirePrisma } from '../services/database';
 import type { Resume } from '../types/resume';
 
 export interface CreateResumeInput {
@@ -27,7 +27,7 @@ export interface ResumeWithVersions extends Resume {
  * 创建简历记录
  */
 export async function createResume(input: CreateResumeInput) {
-  return prisma.resume.create({
+  return requirePrisma().resume.create({
     data: {
       userId: input.userId,
       name: input.name,
@@ -45,7 +45,7 @@ export async function createResume(input: CreateResumeInput) {
  * 根据 ID 获取简历
  */
 export async function getResumeById(id: string) {
-  return prisma.resume.findUnique({
+  return requirePrisma().resume.findUnique({
     where: { id },
     include: {
       parent: true,
@@ -64,7 +64,7 @@ export async function getResumeById(id: string) {
  * 获取用户的所有简历
  */
 export async function getResumesByUserId(userId: string) {
-  return prisma.resume.findMany({
+  return requirePrisma().resume.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -86,7 +86,7 @@ export async function updateResume(
   data: Partial<CreateResumeInput>
 ) {
   const { content, ...rest } = data;
-  return prisma.resume.update({
+  return requirePrisma().resume.update({
     where: { id },
     data: {
       ...rest,
@@ -99,7 +99,7 @@ export async function updateResume(
  * 删除简历
  */
 export async function deleteResume(id: string) {
-  return prisma.resume.delete({
+  return requirePrisma().resume.delete({
     where: { id },
   });
 }
@@ -116,7 +116,7 @@ export async function createResumeVersion(
     throw new Error('Parent resume not found');
   }
 
-  return prisma.resume.create({
+  return requirePrisma().resume.create({
     data: {
       userId: parent.userId,
       name: `${parent.name} v${(parent.version || 1) + 1}`,
@@ -133,20 +133,20 @@ export async function createResumeVersion(
  * 获取简历的所有版本
  */
 export async function getResumeVersions(resumeId: string) {
-  const root = await prisma.resume.findUnique({
+  const root = await requirePrisma().resume.findUnique({
     where: { id: resumeId },
   });
 
   if (!root) return [];
 
   if (!root.parentId) {
-    return prisma.resume.findMany({
+    return requirePrisma().resume.findMany({
       where: { parentId: resumeId },
       orderBy: { version: 'asc' },
     });
   }
 
-  return prisma.resume.findMany({
+  return requirePrisma().resume.findMany({
     where: { parentId: root.parentId },
     orderBy: { version: 'asc' },
   });

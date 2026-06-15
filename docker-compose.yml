@@ -66,6 +66,13 @@ services:
       OSS_BUCKET: ${OSS_BUCKET}
       OSS_REGION: ${OSS_REGION}
       QICHACHA_API_KEY: ${QICHACHA_API_KEY}
+      # 公司信息搜索（用于 Tavily REST API + AI 提取）
+      TAVILY_API_KEY: ${TAVILY_API_KEY}
+      TAVILY_BASE_URL: ${TAVILY_BASE_URL:-https://api.tavily.com}
+      BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY}
+      SEARCH_TIMEOUT_MS: ${SEARCH_TIMEOUT_MS:-5000}
+      # 缓存
+      CACHE_TTL: ${CACHE_TTL:-3600}
     volumes:
       - uploads_data:/app/uploads
     ports:

@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import type { Resume, Proficiency } from '../types/resume';
 import { createConfiguredAIClient } from '../utils/ai-client';
+import { SKILL_CATALOG, categorizeSkill } from '../utils/skill-catalog';
 
 // 延迟导入 PDF 和 Word 解析库
 type PdfParseModule = (dataBuffer: Buffer, options?: any) => Promise<{ text: string }>;
@@ -560,143 +561,8 @@ function parseSkills(text: string): Resume['skills'] {
   const skills: Resume['skills'] = [];
   const seenSkills = new Set<string>();
 
-  // 更全面的技能关键词列表
-  const skillMap: Record<string, Resume['skills'][0]['category']> = {
-    // 编程语言
-    'JavaScript': 'programming-language',
-    'TypeScript': 'programming-language',
-    'Python': 'programming-language',
-    'Java': 'programming-language',
-    'Go': 'programming-language',
-    'Golang': 'programming-language',
-    'Rust': 'programming-language',
-    'C++': 'programming-language',
-    'C#': 'programming-language',
-    'PHP': 'programming-language',
-    'Ruby': 'programming-language',
-    'Swift': 'programming-language',
-    'Kotlin': 'programming-language',
-    'Scala': 'programming-language',
-    'Lua': 'programming-language',
-    'Shell': 'programming-language',
-    'SQL': 'programming-language',
-    'MATLAB': 'programming-language',
-    'C语言': 'programming-language',
-    'C/C++': 'programming-language',
-    // 前端框架
-    'React': 'framework',
-    'Vue': 'framework',
-    'Vue.js': 'framework',
-    'Vue3': 'framework',
-    'Angular': 'framework',
-    'Svelte': 'framework',
-    'Next.js': 'framework',
-    'Nuxt.js': 'framework',
-    'Node.js': 'framework',
-    'Express': 'framework',
-    'Koa': 'framework',
-    'Nest.js': 'framework',
-    'Electron': 'framework',
-    'React Native': 'framework',
-    'Flutter': 'framework',
-    'Uni-app': 'framework',
-    'Taro': 'framework',
-    // 后端框架
-    'Spring Boot': 'framework',
-    'Spring Cloud': 'framework',
-    'Django': 'framework',
-    'Flask': 'framework',
-    'FastAPI': 'framework',
-    'Gin': 'framework',
-    'Echo': 'framework',
-    'Laravel': 'framework',
-    // 数据库
-    'MySQL': 'database',
-    'PostgreSQL': 'database',
-    'MongoDB': 'database',
-    'Redis': 'database',
-    'Elasticsearch': 'database',
-    'SQLite': 'database',
-    'Oracle': 'database',
-    'SQL Server': 'database',
-    'ClickHouse': 'database',
-    'InfluxDB': 'database',
-    'Neo4j': 'database',
-    // 工具
-    'Git': 'tool',
-    'Docker': 'tool',
-    'Kubernetes': 'tool',
-    'K8s': 'tool',
-    'Jenkins': 'tool',
-    'Linux': 'tool',
-    'Nginx': 'tool',
-    'Webpack': 'tool',
-    'Vite': 'tool',
-    'Babel': 'tool',
-    'ESLint': 'tool',
-    'Prettier': 'tool',
-    'Jest': 'tool',
-    'Mocha': 'tool',
-    'Cypress': 'tool',
-    'Prometheus': 'tool',
-    'Grafana': 'tool',
-    'Terraform': 'tool',
-    'Ansible': 'tool',
-    // 云服务
-    'AWS': 'cloud',
-    '阿里云': 'cloud',
-    'Azure': 'cloud',
-    'Google Cloud': 'cloud',
-    'GCP': 'cloud',
-    '腾讯云': 'cloud',
-    '华为云': 'cloud',
-    // 消息队列
-    'Kafka': 'tool',
-    'RabbitMQ': 'tool',
-    // AI/ML
-    'TensorFlow': 'framework',
-    'PyTorch': 'framework',
-    'OpenCV': 'framework',
-    'SVM': 'framework',
-    'AIoT': 'domain-knowledge',
-    'MEMS': 'domain-knowledge',
-    // 前端基础
-    'HTML': 'programming-language',
-    'CSS': 'programming-language',
-    'SASS': 'tool',
-    // API & 协议
-    'GraphQL': 'tool',
-    'gRPC': 'tool',
-    'REST': 'tool',
-    // 设计工具
-    'Figma': 'tool',
-    'Sketch': 'tool',
-    'Excel': 'tool',
-    'STM32': 'tool',
-    'GD32': 'tool',
-    'PCB设计': 'tool',
-    '3D打印': 'tool',
-    '医学信号处理': 'domain-knowledge',
-    '医疗器械': 'domain-knowledge',
-    '医疗健康': 'domain-knowledge',
-    '生物医学工程': 'domain-knowledge',
-    '智能硬件': 'domain-knowledge',
-    '设计思维方法论': 'soft-skill',
-    '用户调研': 'soft-skill',
-    '用戶调研': 'soft-skill',
-    '需求分析': 'soft-skill',
-    'MVP': 'tool',
-    '功能拆解': 'soft-skill',
-    '竞品分析': 'soft-skill',
-    '项目管理': 'soft-skill',
-    '跨团队协作': 'soft-skill',
-    'PRD': 'tool',
-    // CI/CD
-    'CI/CD': 'tool',
-    // 补充框架
-    'NestJS': 'framework',
-    'Spring': 'framework',
-  };
+  // 统一使用 skill-catalog 的技能词典，避免与 categorizeSkill 重复
+  const skillMap = SKILL_CATALOG;
 
   // 检测是否包含中文字符
   const hasCJK = (str: string) => /[\u4e00-\u9fa5]/.test(str);
@@ -1199,32 +1065,6 @@ function uniqueStrings(values: string[]): string[] {
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-function categorizeSkill(skill: string): Resume['skills'][0]['category'] {
-  const categories: Record<string, Resume['skills'][0]['category']> = {
-    'JavaScript': 'programming-language',
-    'TypeScript': 'programming-language',
-    'Python': 'programming-language',
-    'Java': 'programming-language',
-    'Go': 'programming-language',
-    'Rust': 'programming-language',
-    'React': 'framework',
-    'Vue': 'framework',
-    'Angular': 'framework',
-    'Node.js': 'framework',
-    'Express': 'framework',
-    'MySQL': 'database',
-    'PostgreSQL': 'database',
-    'MongoDB': 'database',
-    'Redis': 'database',
-    'Docker': 'tool',
-    'Kubernetes': 'tool',
-    'AWS': 'cloud',
-    '阿里云': 'cloud',
-  };
-
-  return categories[skill] || 'tool';
 }
 
 function findNextSection(text: string, startIndex: number): number {

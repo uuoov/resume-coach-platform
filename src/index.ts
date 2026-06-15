@@ -20,6 +20,7 @@ import { config } from './config';
 import { logger } from './utils/logger';
 import { monitor } from './utils/monitor';
 import { requestLogger, slowRequestLogger } from './middleware/request-logger';
+import { apiRateLimiter } from './middleware/rate-limiter';
 
 // 路由模块
 import authRoutes from './routes/auth.routes';
@@ -89,7 +90,7 @@ app.get('/metrics', (_req, res) => {
 app.get('/api', (_req, res) => {
   res.json({
     name: 'Resume Coach Platform API',
-    version: '0.2.0',
+    version: process.env.npm_package_version || '0.2.0',
     endpoints: {
       'POST /api/resume/parse': '解析简历',
       'POST /api/jd/analyze': '分析 JD',
@@ -106,6 +107,9 @@ app.get('/api', (_req, res) => {
     },
   });
 });
+
+// 全局 API 限流：所有 /api/* 端点
+app.use('/api', apiRateLimiter);
 
 // 路由挂载
 app.use('/api/auth', authRoutes);
@@ -147,7 +151,7 @@ if (config.server.env === 'production') {
 
 // 全局错误处理中间件（必须在所有路由之后定义）
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('全局错误:', err);
+  logger.error('全局错误', err instanceof Error ? err : undefined, 'express');
 
   if (err.name === 'MulterError') {
     if (err.code === 'LIMIT_FILE_SIZE') {

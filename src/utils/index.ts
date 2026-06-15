@@ -86,7 +86,7 @@ export function cleanText(text: string): string {
  * 提取数字
  */
 export function extractNumbers(text: string): number[] {
-  const matches = text.match(/\\d+(\\.\\d+)?/g);
+  const matches = text.match(/\d+(\.\d+)?/g);
   return matches ? matches.map(Number) : [];
 }
 
@@ -94,7 +94,7 @@ export function extractNumbers(text: string): number[] {
  * 百分比解析
  */
 export function parsePercentage(text: string): number | null {
-  const match = text.match(/(\\d+(\\.\\d+)?)\\s*%/);
+  const match = text.match(/(\d+(\.\d+)?)\s*%/);
   return match ? parseFloat(match[1]) : null;
 }
 

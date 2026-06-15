@@ -3,6 +3,14 @@
  * 支持多种 AI 提供商，共享重试逻辑
  */
 
+export interface GenerateOptions {
+  /**
+   * 0 = 完全确定性（用于结构化抽取、打分等需要稳定输出的场景）
+   * 默认未指定时由具体客户端决定（通常 0.7）
+   */
+  temperature?: number;
+}
+
 export interface AIClientConfig {
   apiKey: string;
   model?: string;
@@ -69,21 +77,24 @@ abstract class BaseAIClient {
     this.model = config.model || defaultModel;
   }
 
-  abstract generate(prompt: string): Promise<AIResponse>;
+  abstract generate(prompt: string, opts?: GenerateOptions): Promise<AIResponse>;
 
-  async generateWithRetry(prompt: string, maxRetries = 3): Promise<AIResponse> {
+  async generateWithRetry(
+    prompt: string,
+    maxRetries = 3,
+    opts?: GenerateOptions
+  ): Promise<AIResponse> {
     let lastError: Error | null = null;
 
     for (let i = 0; i < maxRetries; i++) {
       try {
-        return await this.generate(prompt);
+        return await this.generate(prompt, opts);
       } catch (error) {
         lastError = error as Error;
         if (!shouldRetry(error) || i === maxRetries - 1) {
           break;
         }
 
-        console.warn(`AI API 调用失败，重试 ${i + 1}/${maxRetries}:`, error);
         await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
       }
     }
@@ -100,7 +111,14 @@ export class DashScopeClient extends BaseAIClient {
     super(config, 'qwen-plus');
   }
 
-  async generate(prompt: string): Promise<AIResponse> {
+  async generate(prompt: string, opts?: GenerateOptions): Promise<AIResponse> {
+    const parameters: Record<string, any> = {
+      result_format: 'message',
+    };
+    if (opts?.temperature !== undefined) {
+      parameters.temperature = opts.temperature;
+    }
+
     const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
       method: 'POST',
       headers: {
@@ -114,9 +132,7 @@ export class DashScopeClient extends BaseAIClient {
             { role: 'user', content: prompt },
           ],
         },
-        parameters: {
-          result_format: 'message',
-        },
+        parameters,
       }),
     });
 
@@ -156,20 +172,24 @@ export class OpenAIClient extends BaseAIClient {
     this.provider = config.provider || 'openai';
   }
 
-  async generate(prompt: string): Promise<AIResponse> {
-    console.log(`🚀 [AI Client] 正在调用 ${this.provider} 兼容接口 (${this.model})...`);
+  async generate(prompt: string, opts?: GenerateOptions): Promise<AIResponse> {
+    const body: Record<string, any> = {
+      model: this.model,
+      messages: [
+        { role: 'user', content: prompt },
+      ],
+    };
+    if (opts?.temperature !== undefined) {
+      body.temperature = opts.temperature;
+    }
+
     const response = await fetch(`${this.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: 'user', content: prompt },
-        ],
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

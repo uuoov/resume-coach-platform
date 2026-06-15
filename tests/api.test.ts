@@ -173,12 +173,12 @@ describe('Resume Coach Platform API', () => {
   });
 
   describe('Resume Version Management', () => {
-    it('should return 400 for creating version without content', async () => {
+    it('should return 401 for creating version without auth (auth checked before params)', async () => {
       const response = await request(app)
         .post('/api/resume/test-id/versions')
         .send({});
-      expect(response.status).toBe(400);
-      expect(response.body.error).toBe('缺少 content 参数');
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('未登录，请先登录');
     });
   });
 

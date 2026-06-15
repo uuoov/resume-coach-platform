@@ -3,7 +3,7 @@
  * 封装 JD 的 CRUD 操作
  */
 
-import { prisma } from '../services/database';
+import { requirePrisma } from '../services/database';
 import type { JDAnalysis } from '../types/jd';
 
 export interface CreateJDInput {
@@ -18,7 +18,7 @@ export interface CreateJDInput {
  * 创建 JD 记录
  */
 export async function createJD(input: CreateJDInput) {
-  return prisma.jD.create({
+  return requirePrisma().jD.create({
     data: {
       userId: input.userId,
       jobTitle: input.jobTitle,
@@ -33,7 +33,7 @@ export async function createJD(input: CreateJDInput) {
  * 根据 ID 获取 JD
  */
 export async function getJDById(id: string) {
-  return prisma.jD.findUnique({
+  return requirePrisma().jD.findUnique({
     where: { id },
   });
 }
@@ -42,7 +42,7 @@ export async function getJDById(id: string) {
  * 获取用户的所有 JD
  */
 export async function getJDsByUserId(userId: string) {
-  return prisma.jD.findMany({
+  return requirePrisma().jD.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
@@ -53,7 +53,7 @@ export async function getJDsByUserId(userId: string) {
  */
 export async function updateJD(id: string, data: Partial<CreateJDInput>) {
   const { content, ...rest } = data;
-  return prisma.jD.update({
+  return requirePrisma().jD.update({
     where: { id },
     data: {
       ...rest,
@@ -66,7 +66,7 @@ export async function updateJD(id: string, data: Partial<CreateJDInput>) {
  * 删除 JD
  */
 export async function deleteJD(id: string) {
-  return prisma.jD.delete({
+  return requirePrisma().jD.delete({
     where: { id },
   });
 }

@@ -7,6 +7,7 @@ import type { Resume } from '../types/resume';
 import type { JDAnalysis } from '../types/jd';
 import type { DimensionScores, MatchItem, RiskItem } from '../types/match';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
+import { logger } from '../utils/logger';
 
 /**
  * 匹配度权重配置
@@ -31,7 +32,9 @@ export async function calculateMatch(resume: Resume, jdAnalysis: JDAnalysis): Pr
         return aiResult;
       }
     } catch (error) {
-      console.warn('AI 匹配失败，降级到规则引擎:', error);
+      logger.warn('AI 匹配失败，降级到规则引擎', 'matching-engine', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -137,16 +140,21 @@ ${JSON.stringify(resume, null, 2)}
 注意：只返回合并的 JSON 对象，不带有任何 markdown(\`\`\`json 等)包装。`;
 
   try {
-    const response = await client.generateWithRetry(prompt);
+    // temperature=0 保证打分的可复现性，避免同份简历每次跑出不同分数
+    const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
     const jsonStr = extractJsonObject(response.text);
     const result = JSON.parse(jsonStr);
-    
+
     return {
       ...result,
       aiPowered: true
     };
   } catch (error) {
-    console.error('AI 匹配解析失败:', error);
+    logger.error(
+      'AI 匹配解析失败',
+      error instanceof Error ? error : undefined,
+      'matching-engine'
+    );
     return null;
   }
 }

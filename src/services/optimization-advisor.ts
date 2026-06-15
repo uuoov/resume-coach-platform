@@ -4,10 +4,11 @@
  */
 
 import type { Resume } from '../types/resume';
-import type { JDAnalysis } from '../types/jd';
+import type { JDAnalysis, CompanyInfo } from '../types/jd';
 import type { MatchResult, MatchItem } from '../types/match';
 import type { OptimizationSuggestion } from '../types/optimization';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
+import { logger } from '../utils/logger';
 
 /**
  * 生成优化建议
@@ -25,7 +26,9 @@ export async function generateSuggestions(
         return aiSuggestions;
       }
     } catch (error) {
-      console.warn('AI 生成建议失败，降级到规则引擎:', error);
+      logger.warn('AI 生成建议失败，降级到规则引擎', 'optimization-advisor', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -47,7 +50,7 @@ export async function generateSuggestions(
   suggestions.push(...generateQuantificationSuggestions(resume, jdAnalysis));
 
   // 6. 基于公司文化对齐生成建议
-  suggestions.push(...generateCultureFitSuggestions());
+  suggestions.push(...generateCultureFitSuggestions(jdAnalysis.companyInfo, resume));
 
   // 按优先级排序
   return sortSuggestions(dedupeSuggestions(suggestions)).slice(0, 12);
@@ -100,10 +103,11 @@ ${JSON.stringify(matchResult, null, 2)}
 请确保结果是严格的 JSON 数组格式，不要包含任何多余文字或 \`\`\`json 标记。`;
 
   try {
-    const response = await client.generateWithRetry(prompt);
+    // temperature=0 保证 AI 建议的稳定性（同样的输入产生近似输出）
+    const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
     const jsonStr = extractJsonArray(response.text);
     const suggestions: OptimizationSuggestion[] = JSON.parse(jsonStr);
-    
+
     // 给所有生成的建议确保有 id
     return sortSuggestions(suggestions.map(s => ({
       ...s,
@@ -335,12 +339,49 @@ function generateQuantificationSuggestions(
 
 /**
  * 基于公司文化对齐生成建议
+ *
+ * 实现：
+ * - 从 companyInfo.culture.values 中取前 3 个价值观
+ * - 若简历全文未体现该价值观关键词，生成 medium 优先级建议
+ * - 建议在个人优势 / 项目经历中补充对应该价值观的具体表述
  */
-function generateCultureFitSuggestions(): OptimizationSuggestion[] {
-  const suggestions: OptimizationSuggestion[] = [];
+function generateCultureFitSuggestions(
+  companyInfo: CompanyInfo | undefined | null,
+  resume: Resume
+): OptimizationSuggestion[] {
+  if (!companyInfo?.culture?.values || companyInfo.culture.values.length === 0) {
+    return [];
+  }
 
-  // 根据公司类型给出建议
-  // 这里简化实现，实际应该接入公司信息
+  const suggestions: OptimizationSuggestion[] = [];
+  const resumeText = collectResumeText(resume).toLowerCase();
+  const summary = resume.summary || '';
+
+  for (const value of companyInfo.culture.values.slice(0, 3)) {
+    const valueLower = value.toLowerCase();
+    if (resumeText.includes(valueLower)) {
+      continue;
+    }
+
+    const title = `体现「${value}」的特质`;
+    const description = `${companyInfo.name} 的核心价值观之一是「${value}」。` +
+      `建议在个人优势或项目经历中加入能够体现该特质的具体案例或表述，提升 HR 的认同感。`;
+
+    const suggestedContent = summary
+      ? `${summary}\n\n建议补充：与「${value}」相关的经历或成果（如团队协作、客户案例、迭代改进等）。`
+      : `建议在个人优势中新增一段：我是如何践行「${value}」的（1-2 句话 + 1 个具体案例）。`;
+
+    suggestions.push({
+      id: generateId(),
+      priority: 'medium',
+      category: 'culture-fit',
+      section: 'summary',
+      title,
+      description,
+      suggestedContent,
+      reason: `匹配 ${companyInfo.name} 企业文化，提升 HR 好感度。`,
+    });
+  }
 
   return suggestions;
 }
@@ -510,15 +551,16 @@ ${JSON.stringify(jdAnalysis, null, 2)}
 
   const client = createConfiguredAIClient();
   if (!client) {
-    console.warn('未配置 AI API Key，返回规则生成建议内容');
+    logger.warn('未配置 AI API Key，返回规则生成建议内容', 'optimization-advisor');
     return suggestion.suggestedContent || originalContent;
   }
 
   try {
-    const aiResponse = await client.generateWithRetry(prompt);
+    // 内容改写也走低 temperature，避免发散改写偏离原意
+    const aiResponse = await client.generateWithRetry(prompt, 3, { temperature: 0.3 });
     return aiResponse.text;
   } catch (error) {
-    console.error('AI 调用失败:', error);
+    logger.error('AI 调用失败', error instanceof Error ? error : undefined, 'optimization-advisor');
     return originalContent;
   }
 }

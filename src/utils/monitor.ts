@@ -6,6 +6,7 @@
 
 import os from 'os';
 import { prisma, prismaAvailable } from '../services/database';
+import { isRedisAvailable } from '../services/cache';
 
 interface HealthCheckResult {
   status: 'healthy' | 'unhealthy';
@@ -15,6 +16,10 @@ interface HealthCheckResult {
   checks: {
     database: {
       status: 'ok' | 'error';
+      message?: string;
+    };
+    redis: {
+      status: 'ok' | 'disabled' | 'error';
       message?: string;
     };
     memory: {
@@ -137,6 +142,8 @@ class Monitor {
   }
 
   async healthCheck(): Promise<HealthCheckResult> {
+    const redisOk = isRedisAvailable();
+
     const result: HealthCheckResult = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -145,6 +152,10 @@ class Monitor {
       checks: {
         database: {
           status: 'ok',
+        },
+        redis: {
+          status: redisOk ? 'ok' : 'disabled',
+          message: redisOk ? undefined : 'Redis 未配置或连接异常',
         },
         memory: this.getMemoryCheck(),
         disk: this.getDiskCheck(),

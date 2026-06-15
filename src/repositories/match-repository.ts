@@ -3,7 +3,7 @@
  * 封装匹配记录的 CRUD 操作
  */
 
-import { prisma } from '../services/database';
+import { requirePrisma } from '../services/database';
 import type { MatchResult } from '../types/match';
 import type { OptimizationSuggestion } from '../types/optimization';
 
@@ -18,7 +18,7 @@ export interface CreateMatchRecordInput {
  * 创建匹配记录
  */
 export async function createMatchRecord(input: CreateMatchRecordInput) {
-  return prisma.matchRecord.create({
+  return requirePrisma().matchRecord.create({
     data: {
       resumeId: input.resumeId,
       jdId: input.jdId,
@@ -32,7 +32,7 @@ export async function createMatchRecord(input: CreateMatchRecordInput) {
  * 根据 ID 获取匹配记录
  */
 export async function getMatchRecordById(id: string) {
-  return prisma.matchRecord.findUnique({
+  return requirePrisma().matchRecord.findUnique({
     where: { id },
     include: {
       resume: {
@@ -60,7 +60,7 @@ export async function getMatchRecordByResumeAndJD(
   resumeId: string,
   jdId: string
 ) {
-  return prisma.matchRecord.findFirst({
+  return requirePrisma().matchRecord.findFirst({
     where: {
       resumeId,
       jdId,
@@ -76,7 +76,7 @@ export async function getMatchRecordByResumeAndJD(
  * 获取简历的所有匹配记录
  */
 export async function getMatchRecordsByResumeId(resumeId: string) {
-  return prisma.matchRecord.findMany({
+  return requirePrisma().matchRecord.findMany({
     where: { resumeId },
     orderBy: { createdAt: 'desc' },
     include: {
@@ -95,7 +95,7 @@ export async function getMatchRecordsByResumeId(resumeId: string) {
  * 获取 JD 的所有匹配记录
  */
 export async function getMatchRecordsByJDId(jdId: string) {
-  return prisma.matchRecord.findMany({
+  return requirePrisma().matchRecord.findMany({
     where: { jdId },
     orderBy: { createdAt: 'desc' },
     include: {
