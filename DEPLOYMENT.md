@@ -79,6 +79,11 @@ JWT_SECRET=your_secure_jwt_secret_here
 # 域名配置
 CORS_ORIGIN=https://yourdomain.com
 WEB_HTTP_PORT=8080
+
+# Admin 后台超管引导（逗号分隔的 email 列表）
+# 配置后，登录命中该列表的账号会自动升级为 ADMIN 角色
+# 强烈建议生产环境配置至少一个超管 email，否则只能通过手动改库授权
+SUPER_ADMIN_EMAILS=ops@yourdomain.com
 ```
 
 ### 3. 构建和启动

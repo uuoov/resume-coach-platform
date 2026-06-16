@@ -21,6 +21,7 @@ import { logger } from './utils/logger';
 import { monitor } from './utils/monitor';
 import { requestLogger, slowRequestLogger } from './middleware/request-logger';
 import { apiRateLimiter } from './middleware/rate-limiter';
+import { seedMockCompaniesToDb } from './services/mock-companies';
 
 // 路由模块
 import authRoutes from './routes/auth.routes';
@@ -29,6 +30,7 @@ import jdRoutes from './routes/jd.routes';
 import matchRoutes from './routes/match.routes';
 import optimizeRoutes from './routes/optimize.routes';
 import companyRoutes from './routes/company.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app = express();
 const PORT = config.server.port;
@@ -104,6 +106,11 @@ app.get('/api', (_req, res) => {
       'POST /api/resume/version/:versionId/revert': '恢复到特定版本',
       'GET /api/company/query': '查询公司信息',
       'POST /api/company/auto-query': '自动查询公司信息',
+      'GET /api/admin/dashboard': 'Admin 数据看板',
+      'GET /api/admin/system': 'Admin 系统健康',
+      'GET /api/admin/users': 'Admin 用户管理',
+      'GET /api/admin/companies': 'Admin 公司信息库',
+      'GET /api/admin/ai-logs': 'Admin AI 审计',
     },
   });
 });
@@ -118,6 +125,7 @@ app.use('/api/jd', jdRoutes);
 app.use('/api/match', matchRoutes);
 app.use('/api/optimize', optimizeRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/admin', adminRoutes);
 
 if (config.server.env === 'production') {
   app.use(express.static(frontendDistPath, {
@@ -189,6 +197,13 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 // 启动服务器
 if (require.main === module) {
+  // 启动后异步 seed Mock 公司到 DB（幂等，失败不阻塞）
+  seedMockCompaniesToDb().catch((err) => {
+    logger.warn('Mock 公司 seed 失败', 'startup', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+
   app.listen(PORT, () => {
     logger.info(`
 ╔═══════════════════════════════════════════════════════════╗

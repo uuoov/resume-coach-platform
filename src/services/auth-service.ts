@@ -17,9 +17,20 @@ memoryUsers.set('user-0', {
   email: 'admin@example.com',
   name: '测试管理员',
   password: bcrypt.hashSync('123456', config.security.bcryptRounds),
+  role: 'ADMIN' as const,
+  status: 'ACTIVE' as const,
+  disabledAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 });
+
+/**
+ * 判断 email 是否在 SUPER_ADMIN_EMAILS 列表中
+ */
+function isSuperAdminEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  return config.security.superAdminEmails.includes(normalized);
+}
 
 export interface UserRegisterData {
   email: string;
@@ -41,6 +52,8 @@ export interface AuthResponse {
       email: string;
       name?: string | null;
       avatar?: string | null;
+      role?: 'USER' | 'ADMIN';
+      status?: 'ACTIVE' | 'DISABLED';
     };
     token: string;
   };
@@ -134,12 +147,17 @@ export class AuthService {
     }
 
     const hashedPassword = await this.hashPassword(data.password);
+    const role: 'USER' | 'ADMIN' = isSuperAdminEmail(email) ? 'ADMIN' : 'USER';
+
     const user = {
       id: `user-${nextUserId++}`,
       email,
       name: this.normalizeName(data.name),
       avatar: data.avatar,
       password: hashedPassword,
+      role,
+      status: 'ACTIVE' as const,
+      disabledAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -239,18 +257,25 @@ export class AuthService {
 
       const hashedPassword = await this.hashPassword(data.password);
 
+      // 若 email 命中 SUPER_ADMIN_EMAILS，自动升级为 ADMIN 角色
+      const role = isSuperAdminEmail(email) ? 'ADMIN' : 'USER';
+
       const user = await requirePrisma().user.create({
         data: {
           email,
           name,
           avatar: data.avatar,
           password: hashedPassword,
+          role,
         },
         select: {
           id: true,
           email: true,
           name: true,
           avatar: true,
+          role: true,
+          status: true,
+          disabledAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -332,6 +357,9 @@ export class AuthService {
           password: true,
           name: true,
           avatar: true,
+          role: true,
+          status: true,
+          disabledAt: true,
           createdAt: true,
         },
       });
@@ -340,6 +368,15 @@ export class AuthService {
         return {
           success: false,
           error: '邮箱或密码错误',
+        };
+      }
+
+      // 已被禁用的账号
+      if (user.status === 'DISABLED') {
+        return {
+          success: false,
+          error: '账号已被禁用，请联系管理员',
+          statusCode: 403,
         };
       }
 
@@ -353,11 +390,39 @@ export class AuthService {
         };
       }
 
+      // 若 email 命中超管白名单，且当前角色不是 ADMIN，则幂等升级
+      let finalUser = user;
+      if (isSuperAdminEmail(email) && user.role !== 'ADMIN') {
+        try {
+          finalUser = await requirePrisma().user.update({
+            where: { id: user.id },
+            data: { role: 'ADMIN' },
+            select: {
+              id: true,
+              email: true,
+              password: true,
+              name: true,
+              avatar: true,
+              role: true,
+              status: true,
+              disabledAt: true,
+              createdAt: true,
+            },
+          });
+        } catch (upgradeError) {
+          logger.warn(
+            '超管升级失败，仍按原角色登录',
+            'auth-service',
+            { email, error: upgradeError instanceof Error ? upgradeError.message : String(upgradeError) }
+          );
+        }
+      }
+
       // 生成令牌
-      const token = this.generateToken(user.id);
+      const token = this.generateToken(finalUser.id);
 
       // 移除密码字段
-      const { password: _password, ...userWithoutPassword } = user;
+      const { password: _password, ...userWithoutPassword } = finalUser;
 
       return {
         success: true,
@@ -406,6 +471,9 @@ export class AuthService {
           email: true,
           name: true,
           avatar: true,
+          role: true,
+          status: true,
+          disabledAt: true,
         },
       });
       return dbUser;

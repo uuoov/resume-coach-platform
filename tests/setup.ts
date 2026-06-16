@@ -11,29 +11,30 @@ process.env.PORT = '0'; // 使用随机端口避免冲突
 
 // Mock Prisma Client
 jest.mock('@prisma/client', () => {
+  const makeDelegate = () => ({
+    findUnique: jest.fn().mockResolvedValue(null),
+    findFirst: jest.fn().mockResolvedValue(null),
+    findMany: jest.fn().mockResolvedValue([]),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
+    aggregate: jest.fn().mockResolvedValue({}),
+    groupBy: jest.fn().mockResolvedValue([]),
+    upsert: jest.fn(),
+  });
+
   const mockPrismaClient = {
     $connect: jest.fn(),
     $disconnect: jest.fn(),
     $queryRaw: jest.fn().mockResolvedValue([{ 1: 1 }]),
-    company: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'mock-company-id', name: 'Test Company' }),
-      findMany: jest.fn().mockResolvedValue([]),
-    },
-    resume: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'mock-resume-id' }),
-      findMany: jest.fn().mockResolvedValue([]),
-    },
-    jD: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'mock-jd-id' }),
-      findMany: jest.fn().mockResolvedValue([]),
-    },
-    user: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'mock-user-id' }),
-    },
+    company: makeDelegate(),
+    resume: makeDelegate(),
+    jD: makeDelegate(),
+    matchRecord: makeDelegate(),
+    user: makeDelegate(),
+    aiCallLog: makeDelegate(),
   };
 
   return {

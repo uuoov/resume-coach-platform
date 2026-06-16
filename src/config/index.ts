@@ -99,6 +99,10 @@ export const config = {
   security: {
     jwtSecret: process.env.JWT_SECRET || 'default_jwt_secret',
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+    superAdminEmails: (process.env.SUPER_ADMIN_EMAILS || '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
   },
 
   // 缓存配置

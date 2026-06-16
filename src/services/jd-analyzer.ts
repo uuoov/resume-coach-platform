@@ -5,6 +5,7 @@
 
 import type { JDAnalysis, SkillRequirement, HiddenRequirement } from '../types/jd';
 import { createConfiguredAIClient } from '../utils/ai-client';
+import { generateWithAudit } from './ai-audit';
 import { autoQueryCompanyInfo } from './company-info-service';
 import { logger } from '../utils/logger';
 
@@ -55,7 +56,13 @@ async function analyzeWithAI(
   }
 
   try {
-    const aiResponse = await client.generateWithRetry(prompt);
+    const aiResponse = await generateWithAudit(
+      client,
+      { service: 'jd-analyzer' },
+      prompt,
+      3,
+      undefined
+    );
     // 解析 AI 响应
     return parseAIResponse(aiResponse.text, jdText, companyInfo, jobTitle, company);
   } catch (error) {

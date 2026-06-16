@@ -382,4 +382,80 @@ export const api = {
   },
 };
 
+/**
+ * Admin API 命名空间
+ */
+export const adminApi = {
+  getDashboard: async () => {
+    const response = await apiClient.get('/admin/dashboard');
+    return response.data.data;
+  },
+
+  getSystem: async () => {
+    const response = await apiClient.get('/admin/system');
+    return response.data.data;
+  },
+
+  listUsers: async (params: {
+    q?: string;
+    status?: 'ACTIVE' | 'DISABLED';
+    role?: 'USER' | 'ADMIN';
+    page?: number;
+    pageSize?: number;
+  } = {}) => {
+    const response = await apiClient.get('/admin/users', { params });
+    return response.data.data;
+  },
+
+  updateUser: async (id: string, data: {
+    role?: 'USER' | 'ADMIN';
+    status?: 'ACTIVE' | 'DISABLED';
+  }) => {
+    const response = await apiClient.patch(`/admin/users/${id}`, data);
+    return response.data.data;
+  },
+
+  listCompanies: async (params: {
+    source?: string;
+    keyword?: string;
+    page?: number;
+    pageSize?: number;
+  } = {}) => {
+    const response = await apiClient.get('/admin/companies', { params });
+    return response.data.data;
+  },
+
+  createCompany: async (data: any) => {
+    const response = await apiClient.post('/admin/companies', data);
+    return response.data.data;
+  },
+
+  updateCompany: async (id: string, data: any) => {
+    const response = await apiClient.patch(`/admin/companies/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteCompany: async (id: string) => {
+    const response = await apiClient.delete(`/admin/companies/${id}`);
+    return response.data.data;
+  },
+
+  listAiLogs: async (params: {
+    service?: string;
+    userId?: string;
+    success?: boolean;
+    since?: string;
+    page?: number;
+    pageSize?: number;
+  } = {}) => {
+    const response = await apiClient.get('/admin/ai-logs', { params });
+    return response.data.data;
+  },
+
+  getAiLogStats: async (days: number = 7) => {
+    const response = await apiClient.get('/admin/ai-logs/stats', { params: { days } });
+    return response.data.data;
+  },
+};
+
 export default apiClient;

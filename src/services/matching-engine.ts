@@ -7,6 +7,7 @@ import type { Resume } from '../types/resume';
 import type { JDAnalysis } from '../types/jd';
 import type { DimensionScores, MatchItem, RiskItem } from '../types/match';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
+import { generateWithAudit } from './ai-audit';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
 
@@ -204,7 +205,13 @@ ${JSON.stringify(resume, null, 2)}
 
   try {
     // temperature=0 保证打分的可复现性，避免同份简历每次跑出不同分数
-    const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
+    const response = await generateWithAudit(
+      client,
+      { service: 'matching-engine' },
+      prompt,
+      3,
+      { temperature: 0 }
+    );
     const parsed = parseAIResultWithZod(response.text);
 
     if (!parsed) {

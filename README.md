@@ -142,9 +142,29 @@ DEEPSEEK_MODEL=deepseek-chat
 # REDIS_URL=redis://localhost:6379
 
 # BCRYPT_ROUNDS：默认 12，与 docker-compose 注入项对齐
+
+# Admin 后台超管引导：逗号分隔的 email 列表，登录后自动升级为 ADMIN
+# SUPER_ADMIN_EMAILS=admin@example.com,ops@your-domain.com
 ```
 
 生产环境不要开启内存认证降级，不要提交 `.env`、`.env.local`、`.env.production`。
+
+### Admin 后台
+
+平台内置一个最小可用的 Admin 后台（`/admin` 路由），覆盖：
+
+- 数据看板：今日注册、DAU、AI 调用量、PDF 导出量、错误率
+- 用户管理：列表 / 搜索 / 角色切换 / 封禁
+- 公司信息库：DB 公司 CRUD + Mock 公司运行时编辑
+- AI 调用审计：每次 AI 调用的 prompt/response/token/耗时/成本估算
+
+访问方式：
+
+1. 在 `.env` 中配置 `SUPER_ADMIN_EMAILS=your@email.com`
+2. 用该邮箱注册或登录，账号会自动升级为 `ADMIN`
+3. 导航栏会出现「管理」入口，点击进入 `/admin`
+
+未配置 `SUPER_ADMIN_EMAILS` 时无超管；内存测试账号 `admin@example.com` 始终为 ADMIN，作为应急入口。详见 [DEPLOYMENT.md](./DEPLOYMENT.md)。
 
 ### 初始化数据库
 

@@ -17,6 +17,8 @@ declare global {
         email: string;
         name?: string | null;
         avatar?: string | null;
+        role?: 'USER' | 'ADMIN';
+        status?: 'ACTIVE' | 'DISABLED';
       };
     }
   }
@@ -58,6 +60,14 @@ export const requireAuth = async (
     // 可选：加载用户信息到请求中
     const user = await AuthService.getUserByToken(token);
     if (user) {
+      // 已被封禁的账号拒绝访问
+      if (user.status === 'DISABLED') {
+        res.status(403).json({
+          success: false,
+          error: '账号已被禁用，请联系管理员',
+        });
+        return;
+      }
       req.user = user;
     }
 

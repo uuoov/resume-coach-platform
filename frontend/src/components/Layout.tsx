@@ -30,6 +30,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import HistoryIcon from '@mui/icons-material/History';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useAuth } from '../context/AuthContext';
 import Footer from './Footer';
 
@@ -37,7 +38,7 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   { label: '首页', path: '/', icon: <HomeIcon /> },
   { label: '简历', path: '/resume', icon: <DescriptionIcon /> },
   { label: 'JD 分析', path: '/jd', icon: <WorkIcon /> },
@@ -51,6 +52,13 @@ export default function Layout({ children }: LayoutProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const navItems = [
+    ...baseNavItems,
+    ...(user?.role === 'ADMIN'
+      ? [{ label: '管理', path: '/admin', icon: <AdminPanelSettingsIcon /> }]
+      : []),
+  ];
 
   const steps = ['上传简历', 'JD 分析', '匹配分析', '优化建议'];
 

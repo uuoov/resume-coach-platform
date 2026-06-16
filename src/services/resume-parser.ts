@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import type { Resume, Proficiency } from '../types/resume';
 import { createConfiguredAIClient } from '../utils/ai-client';
+import { generateWithAudit } from './ai-audit';
 import { SKILL_CATALOG, categorizeSkill } from '../utils/skill-catalog';
 
 // 延迟导入 PDF 和 Word 解析库
@@ -163,7 +164,13 @@ ${text.substring(0, 8000)}
 6. 确保输出有效的 JSON 格式`;
 
   try {
-    const aiResponse = await client.generateWithRetry(prompt);
+    const aiResponse = await generateWithAudit(
+      client,
+      { service: 'resume-parser' },
+      prompt,
+      3,
+      undefined
+    );
 
     // 提取 JSON 内容（处理可能的 markdown 格式）
     let jsonStr = aiResponse.text.trim();

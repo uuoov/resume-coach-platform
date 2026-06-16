@@ -18,11 +18,27 @@ model User {
   password  String   // 加密存储
   name      String?
   avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role         @default(USER)
+  status    UserStatus   @default(ACTIVE)
+  disabledAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   resumes Resume[]
   jds     JD[]
+
+  @@index([role])
+  @@index([status])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
 }
 
 // ==================== 简历模型 ====================
@@ -97,6 +113,34 @@ model Company {
   description String?  @db.Text // 公司简介
   culture     Json?    // 公司文化标签
   techStack   String[] // 技术栈
+  source      String   @default("search") // 'mock' | 'search' | 'manual'
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([source])
+}
+
+// ==================== AI 调用审计日志 ====================
+
+model AiCallLog {
+  id               String   @id @default(cuid())
+  userId           String?
+  service          String   // 'resume-parser' | 'jd-analyzer' | 'matching-engine' | 'optimization-advisor' | 'company-info'
+  provider         String   // 'deepseek' | 'openai' | 'dashscope'
+  model            String
+  temperature      Float?
+  promptChars      Int
+  responseChars    Int
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  latencyMs        Int
+  success          Boolean
+  errorMessage     String?  @db.Text
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([service])
+  @@index([createdAt])
+  @@index([success])
 }

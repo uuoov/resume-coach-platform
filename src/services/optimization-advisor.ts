@@ -8,6 +8,7 @@ import type { JDAnalysis, CompanyInfo } from '../types/jd';
 import type { MatchResult, MatchItem } from '../types/match';
 import type { OptimizationSuggestion } from '../types/optimization';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
+import { generateWithAudit } from './ai-audit';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
 
@@ -159,7 +160,13 @@ ${JSON.stringify(matchResult, null, 2)}
 
   try {
     // temperature=0 保证 AI 建议的稳定性（同样的输入产生近似输出）
-    const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
+    const response = await generateWithAudit(
+      client,
+      { service: 'optimization-advisor' },
+      prompt,
+      3,
+      { temperature: 0 }
+    );
     const parsed = parseAISuggestionsWithZod(response.text);
 
     if (!parsed) {
@@ -618,7 +625,13 @@ ${JSON.stringify(jdAnalysis, null, 2)}
 
   try {
     // 内容改写也走低 temperature，避免发散改写偏离原意
-    const aiResponse = await client.generateWithRetry(prompt, 3, { temperature: 0.3 });
+    const aiResponse = await generateWithAudit(
+      client,
+      { service: 'optimization-advisor' },
+      prompt,
+      3,
+      { temperature: 0.3 }
+    );
     return aiResponse.text;
   } catch (error) {
     logger.error('AI 调用失败', error instanceof Error ? error : undefined, 'optimization-advisor');

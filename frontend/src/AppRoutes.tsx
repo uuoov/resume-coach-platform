@@ -11,6 +11,7 @@ const OptimizationPage = lazy(() => import('./pages/OptimizationPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
 
 const RouteFallback = () => (
   <div className="route-fallback" aria-label="页面加载中" aria-busy="true" />
@@ -28,6 +29,24 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   }
 
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+const AdminRoute = ({ children }: { children: ReactNode }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const PublicRoute = ({ children }: { children: ReactNode }) => {
@@ -95,6 +114,15 @@ const AppRoutes = () => {
               <HistoryPage />
             </LazyRoute>
           </ProtectedRoute>
+        </Layout>
+      } />
+      <Route path="/admin" element={
+        <Layout>
+          <AdminRoute>
+            <LazyRoute>
+              <AdminPage />
+            </LazyRoute>
+          </AdminRoute>
         </Layout>
       } />
       <Route path="/login" element={

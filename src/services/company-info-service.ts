@@ -17,14 +17,16 @@ import {
   createCompany,
   updateCompany,
 } from '../repositories/company-repository';
-import { cacheGet, cacheSet } from './cache';
+import { cacheGet, cacheSet, cacheInvalidate } from './cache';
 import {
   createSearchProvider,
   type SearchProvider,
   type SearchResult,
 } from './search-provider';
 import { createConfiguredAIClient } from '../utils/ai-client';
+import { generateWithAudit } from './ai-audit';
 import { logger } from '../utils/logger';
+import { getMockCompanyInfo } from './mock-companies';
 
 /**
  * 公司信息类型定义
@@ -100,95 +102,13 @@ export function extractCompanyNameFromJD(jdText: string): string | null {
 
 /**
  * Mock 公司信息库（仅做最终兜底使用）
+ *
+ * 内置 5 家头部公司的数据已迁移到 src/services/mock-companies.ts，
+ * 并在启动时 seed 到 DB。这里保留函数签名作为兼容入口。
+ * 通用兜底模板由 getFallbackCompany 提供（未命中的公司名生成默认结构）。
  */
-function getMockCompanyInfo(companyName: string): CompanyInfo {
-  const mockCompanies: Record<string, CompanyInfo> = {
-    '阿里巴巴': {
-      name: '阿里巴巴',
-      industry: '互联网/电商',
-      size: '20000人以上',
-      location: '杭州',
-      website: 'https://www.alibaba.com',
-      description:
-        '阿里巴巴集团控股有限公司是以曾担任英语教师的马云为首的18人于1999年在浙江省杭州市创立的公司。',
-      culture: {
-        values: ['客户第一', '团队合作', '拥抱变化', '诚信', '激情', '敬业'],
-        workStyle: '快节奏',
-      },
-      techStack: ['Java', 'Scala', 'Go', 'React', 'Node.js', 'Docker', 'Kubernetes'],
-    },
-    '腾讯': {
-      name: '腾讯',
-      industry: '互联网/科技',
-      size: '20000人以上',
-      location: '深圳',
-      website: 'https://www.tencent.com',
-      description:
-        '深圳市腾讯计算机系统有限公司成立于1998年11月，由马化腾、张志东、许晨晔、陈一丹、曾李青五位创始人共同创立。',
-      culture: {
-        values: ['正直', '进取', '合作', '创新'],
-        workStyle: '创新驱动',
-      },
-      techStack: ['C++', 'Java', 'Go', 'Python', 'Vue.js', 'Node.js', 'Docker'],
-    },
-    '字节跳动': {
-      name: '字节跳动',
-      industry: '互联网/科技',
-      size: '20000人以上',
-      location: '北京',
-      website: 'https://www.bytedance.com',
-      description: '字节跳动成立于2012年3月，公司使命为 Inspire Creativity, Enrich Life。',
-      culture: {
-        values: ['追求极致', '务实敢为', '开放谦逊', '坦诚清晰', '始终创业', '多元兼容'],
-        workStyle: '快速迭代',
-      },
-      techStack: ['Java', 'Go', 'Python', 'React', 'Node.js', 'Flutter', 'Kubernetes'],
-    },
-    '华为': {
-      name: '华为',
-      industry: '通信/科技',
-      size: '100000人以上',
-      location: '深圳',
-      website: 'https://www.huawei.com',
-      description: '华为技术有限公司是一家生产销售通信设备的民营通信科技公司。',
-      culture: {
-        values: ['以客户为中心', '以奋斗者为本', '长期艰苦奋斗', '坚持自我批判'],
-        workStyle: '狼性文化',
-      },
-      techStack: ['Java', 'C++', 'Python', 'Go', 'Android', 'iOS', 'Docker'],
-    },
-    '百度': {
-      name: '百度',
-      industry: '互联网/科技',
-      size: '20000人以上',
-      location: '北京',
-      website: 'https://www.baidu.com',
-      description: '百度是拥有强大互联网基础的领先AI公司。',
-      culture: {
-        values: ['简单可依赖'],
-        workStyle: '技术驱动',
-      },
-      techStack: ['Java', 'Python', 'Go', 'C++', 'React', 'Node.js', 'TensorFlow'],
-    },
-  };
-
-  if (mockCompanies[companyName]) {
-    return mockCompanies[companyName];
-  }
-
-  return {
-    name: companyName,
-    industry: '互联网',
-    size: '500-2000人',
-    location: '北京',
-    website: '',
-    description: `这是一家名为${companyName}的公司，主要从事互联网相关业务。`,
-    culture: {
-      values: ['创新', '协作', '共赢'],
-      workStyle: '高效',
-    },
-    techStack: ['Java', 'Python', 'JavaScript'],
-  };
+function getMockCompanyInfoLocal(companyName: string): CompanyInfo {
+  return getMockCompanyInfo(companyName);
 }
 
 function mapDbRowToCompanyInfo(row: any): CompanyInfo {
@@ -285,7 +205,13 @@ ${context}
 如果某项信息无法从搜索结果中获取，填 null 或空字符串。不要编造数据。`;
 
   try {
-    const response = await aiClient.generateWithRetry(prompt);
+    const response = await generateWithAudit(
+      aiClient,
+      { service: 'company-info' },
+      prompt,
+      3,
+      undefined
+    );
     const jsonStr = extractJsonFromText(response.text);
     const parsed = JSON.parse(jsonStr) as Partial<CompanyInfo>;
 
@@ -360,7 +286,7 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
   }
 
   // 4. Mock 兜底
-  const mock = getMockCompanyInfo(companyName);
+  const mock = getMockCompanyInfoLocal(companyName);
   await cacheSet(cacheKey, mock, CACHE_TTL_COMPANY);
   return mock;
 }
@@ -378,6 +304,18 @@ export async function updateCompanyInfo(
   }
 
   return createCompany({ ...companyInfo, name: companyName } as CompanyInfo);
+}
+
+/**
+ * 失效某个公司名的缓存（admin 编辑后调用）
+ */
+export async function invalidateCompanyCache(companyName: string): Promise<void> {
+  const cacheKey = `${CACHE_PREFIX}${companyName}`;
+  try {
+    await cacheInvalidate(cacheKey);
+  } catch {
+    // 静默失败
+  }
 }
 
 /**

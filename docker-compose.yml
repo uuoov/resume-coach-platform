@@ -73,6 +73,8 @@ services:
       SEARCH_TIMEOUT_MS: ${SEARCH_TIMEOUT_MS:-5000}
       # 缓存
       CACHE_TTL: ${CACHE_TTL:-3600}
+      # Admin 后台超管 email（逗号分隔；登录命中后自动升级为 ADMIN）
+      SUPER_ADMIN_EMAILS: ${SUPER_ADMIN_EMAILS:-}
     volumes:
       - uploads_data:/app/uploads
     # ports:
