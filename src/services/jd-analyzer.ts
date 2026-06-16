@@ -6,6 +6,7 @@
 import type { JDAnalysis, SkillRequirement, HiddenRequirement } from '../types/jd';
 import { createConfiguredAIClient } from '../utils/ai-client';
 import { autoQueryCompanyInfo } from './company-info-service';
+import { logger } from '../utils/logger';
 
 /**
  * 分析岗位描述
@@ -49,7 +50,7 @@ async function analyzeWithAI(
 
   const client = createConfiguredAIClient();
   if (!client) {
-    console.warn('未配置 AI API Key，使用降级方案');
+    logger.warn('未配置 AI API Key，使用降级方案', 'jd-analyzer');
     return createBasicAnalysis(jobTitle, company, jdText, companyInfo);
   }
 
@@ -58,7 +59,7 @@ async function analyzeWithAI(
     // 解析 AI 响应
     return parseAIResponse(aiResponse.text, jdText, companyInfo, jobTitle, company);
   } catch (error) {
-    console.error('AI 调用失败:', error);
+    logger.error('AI 调用失败', error instanceof Error ? error : undefined, 'jd-analyzer');
     // 降级方案
     return createBasicAnalysis(jobTitle, company, jdText, companyInfo);
   }
@@ -170,7 +171,7 @@ function parseAIResponse(
       rawText,
     };
   } catch (error) {
-    console.error('解析 AI 响应响应失败:', error);
+    logger.error('解析 AI 响应失败', error instanceof Error ? error : undefined, 'jd-analyzer');
     // 返回基础分析
     return createBasicAnalysis(fallbackJobTitle, fallbackCompany, rawText, companyInfo);
   }

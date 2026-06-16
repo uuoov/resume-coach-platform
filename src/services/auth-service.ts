@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { requirePrisma, prismaAvailable } from './database';
 import { config } from '../config';
+import { logger } from '../utils/logger';
 
 const JWT_EXPIRES_IN = '24h';
 
@@ -266,7 +267,7 @@ export class AuthService {
       };
 
     } catch (error: unknown) {
-      console.error('注册失败:', error);
+      logger.error('注册失败', error instanceof Error ? error : undefined, 'auth-service');
       if (this.isUniqueConstraintError(error)) {
         return {
           success: false,
@@ -366,7 +367,7 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error('登录失败:', error);
+      logger.error('登录失败', error instanceof Error ? error : undefined, 'auth-service');
       return {
         success: false,
         error: '登录服务暂时不可用',

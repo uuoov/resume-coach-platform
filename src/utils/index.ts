@@ -2,6 +2,8 @@
  * 通用工具函数
  */
 
+import { logger } from './logger';
+
 /**
  * 生成唯一 ID
  */
@@ -131,7 +133,9 @@ export async function retry<T>(
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      console.warn(`重试 ${i + 1}/${maxRetries}:`, error);
+      logger.warn(`重试 ${i + 1}/${maxRetries}`, 'retry', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       await sleep(delayMs * (i + 1));
     }
   }

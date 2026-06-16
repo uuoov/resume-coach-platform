@@ -279,10 +279,38 @@ LOG_MAX_FILES=7d        # 保留天数
 - **Helmet.js**: HTTP 安全头
 - **CORS**: 跨域控制
 - **Content Security Policy**: CSP 头
-- **Rate Limiting**: 请求限制
+- **Rate Limiting**:
+  - AI 重型端点（`/api/resume/parse`、`/api/jd/analyze`、`/api/match/calculate`、`/api/optimize/suggest`、`/api/company/auto-query`）：每 IP 15 分钟 30 次
+  - 全局 `/api/*`：每 IP 15 分钟 100 次
+  - `NODE_ENV=test` 时自动跳过限流，避免阻塞测试套件
 - **JWT Authentication**: 身份认证
-- **bcrypt**: 密码哈希
+- **bcrypt**: 密码哈希（默认 12 轮，可通过 `BCRYPT_ROUNDS` 配置）
 - **Non-root Docker user**: 容器安全
+
+### 可选：Redis 缓存
+
+系统支持 Redis 缓存以降低数据库和外部 API 压力。未配置时所有缓存操作静默降级，不影响业务。
+
+```env
+REDIS_URL=redis://localhost:6379
+```
+
+缓存覆盖范围：
+- 公司信息：TTL 24 小时
+- JD 分析结果：TTL 1 小时
+- 匹配度计算：TTL 30 分钟
+
+Docker Compose 已内置 Redis 容器（见 `docker-compose.yml`），生产部署可直接启用。
+
+### 可选：公司信息搜索 (Tavily)
+
+公司信息查询默认走内置 Mock 数据；配置 Tavily 后会按 "Redis 缓存 → PostgreSQL → Tavily Web 搜索 → AI 结构化提取 → Mock" 的顺序兜底。
+
+```env
+TAVILY_API_KEY=your_tavily_api_key_here
+TAVILY_BASE_URL=https://api.tavily.com   # 可选，默认官方地址
+SEARCH_TIMEOUT_MS=5000                    # 可选，默认 5 秒
+```
 
 ### SSL/HTTPS 配置
 

@@ -5,6 +5,7 @@
 import { Router, type Request, type Response } from 'express';
 import { AuthService } from '../services/auth-service';
 import { requireAuth } from '../middleware/auth-middleware';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.post('/register', async (req: Request, res: Response) => {
       res.status(result.statusCode || 400).json(result);
     }
   } catch (error: any) {
-    console.error('注册失败:', error);
+    logger.error('注册失败', error instanceof Error ? error : undefined, 'auth-routes');
     res.status(500).json({
       success: false,
       error: '服务器内部错误',
@@ -59,7 +60,7 @@ router.post('/login', async (req: Request, res: Response) => {
       res.status(result.statusCode || 401).json(result);
     }
   } catch (error: any) {
-    console.error('登录失败:', error);
+    logger.error('登录失败', error instanceof Error ? error : undefined, 'auth-routes');
     res.status(500).json({
       success: false,
       error: '服务器内部错误',
@@ -76,7 +77,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
       data: req.user,
     });
   } catch (error: any) {
-    console.error('获取用户信息失败:', error);
+    logger.error('获取用户信息失败', error instanceof Error ? error : undefined, 'auth-routes');
     res.status(500).json({
       success: false,
       error: '服务器内部错误',

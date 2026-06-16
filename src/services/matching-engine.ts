@@ -8,6 +8,7 @@ import type { JDAnalysis } from '../types/jd';
 import type { DimensionScores, MatchItem, RiskItem } from '../types/match';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
 import { logger } from '../utils/logger';
+import { z } from 'zod';
 
 /**
  * 匹配度权重配置
@@ -19,6 +20,66 @@ const MATCH_WEIGHTS = {
   softSkills: 0.15,
   industry: 0.10,
 };
+
+/**
+ * AI 输出 Zod schema —— 用于校验 LLM 返回的匹配结果，拒绝畸形结构。
+ * 校验失败时 calculateMatchWithAI 返回 null，由 calculateMatch 回退到规则算法。
+ */
+const aiDimensionSchema = z.object({
+  score: z.number().min(0).max(100),
+  weight: z.number().min(0).max(1),
+  details: z.array(z.string()).default([]),
+  reasoning: z.string().optional(),
+});
+
+const aiMatchItemSchema = z.object({
+  category: z.string().default('skill'),
+  item: z.string(),
+  matched: z.boolean(),
+  confidence: z.number().min(0).max(1).default(0.5),
+  description: z.string().optional(),
+  evidence: z.string().optional(),
+});
+
+const aiRiskItemSchema = z.object({
+  type: z.string().default('skill-gap'),
+  description: z.string(),
+  severity: z.enum(['low', 'medium', 'high']).default('medium'),
+  suggestion: z.string().optional(),
+});
+
+const aiMatchResultSchema = z.object({
+  overallScore: z.number().min(0).max(100),
+  overallAnalysis: z.string().optional(),
+  dimensions: z.object({
+    skill: aiDimensionSchema,
+    experience: aiDimensionSchema,
+    education: aiDimensionSchema,
+    softSkill: aiDimensionSchema,
+    industry: aiDimensionSchema,
+  }),
+  strengths: z.array(aiMatchItemSchema).default([]),
+  gaps: z.array(aiMatchItemSchema).default([]),
+  risks: z.array(aiRiskItemSchema).default([]),
+});
+
+type AIMatchResult = z.infer<typeof aiMatchResultSchema>;
+
+function parseAIResultWithZod(rawText: string): AIMatchResult | null {
+  const jsonStr = extractJsonObject(rawText);
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return aiMatchResultSchema.parse(parsed);
+  } catch (err) {
+    const detail = err instanceof z.ZodError
+      ? err.errors.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join('; ')
+      : (err as Error).message;
+    logger.warn('AI 匹配结果未通过 Zod 校验，降级到规则引擎', 'matching-engine', {
+      detail,
+    });
+    return null;
+  }
+}
 
 /**
  * 计算简历与 JD 的匹配度
@@ -114,11 +175,11 @@ ${JSON.stringify(resume, null, 2)}
   "overallScore": 85,
   "overallAnalysis": "候选人整体非常匹配该岗位，技术栈高度契合...",
   "dimensions": {
-    "skill": { "score": 90, "weight": 0.35, "details": ["熟练 React", "缺 Node.js"] },
-    "experience": { "score": 80, "weight": 0.25, "details": ["3年经验"] },
-    "education": { "score": 100, "weight": 0.15, "details": ["本科计算机专业"] },
-    "softSkill": { "score": 85, "weight": 0.15, "details": ["沟通良好"] },
-    "industry": { "score": 90, "weight": 0.10, "details": ["有互联网行业经验"] }
+    "skill": { "score": 90, "weight": 0.35, "details": ["熟练 React", "缺 Node.js"], "reasoning": "候选人 3 年 React 项目经验，但未提及 Node.js 后端经历" },
+    "experience": { "score": 80, "weight": 0.25, "details": ["3年经验"], "reasoning": "工作年限达标，且有过 SaaS 项目的完整周期经验" },
+    "education": { "score": 100, "weight": 0.15, "details": ["本科计算机专业"], "reasoning": "学历与专业均符合岗位要求" },
+    "softSkill": { "score": 85, "weight": 0.15, "details": ["沟通良好"], "reasoning": "自我评价中体现跨团队协作能力" },
+    "industry": { "score": 90, "weight": 0.10, "details": ["有互联网行业经验"], "reasoning": "有同类电商业务背景" }
   },
   "strengths": [
     { "category": "skill", "item": "React", "matched": true, "confidence": 0.9, "description": "熟练掌握 React 框架及生态" }
@@ -137,17 +198,47 @@ ${JSON.stringify(resume, null, 2)}
     "overallAnalysis": "作为资深 HR 总监，给出一段不超过 300 字的犀利、专业的整体评价，说明此人是否值得面试以及核心考量因素。"
 }
 
-注意：只返回合并的 JSON 对象，不带有任何 markdown(\`\`\`json 等)包装。`;
+注意：
+1. dimensions.*.reasoning 字段为必填，给出该维度得分的判定依据
+2. 只返回合并的 JSON 对象，不带有任何 markdown(\`\`\`json 等)包装`;
 
   try {
     // temperature=0 保证打分的可复现性，避免同份简历每次跑出不同分数
     const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
-    const jsonStr = extractJsonObject(response.text);
-    const result = JSON.parse(jsonStr);
+    const parsed = parseAIResultWithZod(response.text);
 
+    if (!parsed) {
+      return null;
+    }
+
+    // Zod 校验通过，组装对外返回结构
     return {
-      ...result,
-      aiPowered: true
+      overallScore: Math.round(parsed.overallScore),
+      overallAnalysis: parsed.overallAnalysis,
+      dimensions: parsed.dimensions,
+      strengths: parsed.strengths.map(s => ({
+        category: s.category as any,
+        item: s.item,
+        matched: s.matched,
+        confidence: s.confidence,
+        description: s.description,
+        evidence: s.evidence,
+      })),
+      gaps: parsed.gaps.map(g => ({
+        category: g.category as any,
+        item: g.item,
+        matched: g.matched,
+        confidence: g.confidence,
+        description: g.description,
+        evidence: g.evidence,
+      })),
+      risks: parsed.risks.map(r => ({
+        type: r.type as any,
+        description: r.description,
+        severity: r.severity,
+        suggestion: r.suggestion,
+      })),
+      aiPowered: true,
     };
   } catch (error) {
     logger.error(

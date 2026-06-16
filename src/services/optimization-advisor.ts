@@ -9,6 +9,45 @@ import type { MatchResult, MatchItem } from '../types/match';
 import type { OptimizationSuggestion } from '../types/optimization';
 import { createConfiguredAIClient, hasConfiguredAIClient } from '../utils/ai-client';
 import { logger } from '../utils/logger';
+import { z } from 'zod';
+
+/**
+ * AI 返回的优化建议 Zod schema —— 用于校验 LLM 输出，拒绝畸形结构。
+ * 校验失败时 generateSuggestionsWithAI 返回 null，外层降级到规则引擎。
+ */
+const aiSuggestionSchema = z.object({
+  id: z.string().optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']),
+  category: z.enum(['keyword-addition', 'content-rewrite', 'quantification', 'culture-fit', 'addition']),
+  section: z.enum(['summary', 'work-experience', 'skills', 'project']),
+  title: z.string(),
+  description: z.string(),
+  currentContent: z.string().nullable().optional(),
+  suggestedContent: z.string().nullable().optional(),
+  reason: z.string().optional(),
+  assumptionsMade: z.array(z.string()).default([]),
+});
+
+const aiSuggestionsEnvelopeSchema = z.array(aiSuggestionSchema);
+
+type AISuggestion = z.infer<typeof aiSuggestionSchema>;
+
+function parseAISuggestionsWithZod(rawText: string): AISuggestion[] | null {
+  const jsonStr = extractJsonArray(rawText);
+  try {
+    const parsed = JSON.parse(jsonStr);
+    const result = aiSuggestionsEnvelopeSchema.parse(parsed);
+    return result;
+  } catch (err) {
+    const detail = err instanceof z.ZodError
+      ? err.errors.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join('; ')
+      : (err as Error).message;
+    logger.warn('AI 优化建议未通过 Zod 校验，降级到规则引擎', 'optimization-advisor', {
+      detail,
+    });
+    return null;
+  }
+}
 
 /**
  * 生成优化建议
@@ -67,12 +106,22 @@ async function generateSuggestionsWithAI(
   const client = createConfiguredAIClient();
   if (!client) return null;
 
+  // 注入公司信息上下文，让 AI 给出 section-specific 的建议
+  const companyInfo: CompanyInfo | undefined = (jdAnalysis as any).companyInfo;
+  const companyContext = companyInfo
+    ? `\n【公司信息】\n名称：${companyInfo.name}\n行业：${companyInfo.industry || '-'}\n` +
+      `文化价值观：${companyInfo.culture?.values?.join('、') || '-'}\n` +
+      `技术栈偏好：${companyInfo.techStack?.join('、') || '-'}\n`
+    : '\n【公司信息】未提供，请基于 JD 通用视角给出建议。\n';
+
   const prompt = `你是一位具有极高职业操守的首席资深简历辅导专家。请仔细阅读以下 JD 分析结果和当前的匹配度报告，为候选人提供极度专业、一针见血的简历优化建议。
 
 【绝对红线 / 核心原则】（如果违反将被视为严重失误！）：
 1. 恪守真实：绝对不能无中生有！不能跨越事实边界替用户捏造从未做过的项目、工具、技术栈或虚假的数据指标！
 2. 允许进阶润色与推测引导：为了提供体现高业务价值的优选文案，你可以基于 JD 推断并生成包含量化指标或进阶动作的极佳句式，**但你必须将所有此类超越了原简历的事实推断项，如实列入 'assumptionsMade' 数组中**，以警示用户核实修改，不可直接当作既定事实通过。如果不涉及推断，填空行。
 3. 事实定界：建议中若包含编造的数据（如'性能提升50%'），请用挂号 (xx) 占位提醒用户。
+
+${companyContext}
 
 候选人简历:
 ${JSON.stringify(resume, null, 2)}
@@ -84,6 +133,12 @@ ${JSON.stringify(jdAnalysis, null, 2)}
 ${JSON.stringify(matchResult, null, 2)}
 
 你的建议需要非常具体，提供 "currentContent"(如果适用) 和 "suggestedContent" 来说明如何修改。
+每个 section 的建议应与该 section 的内容形态对齐：
+- summary：聚焦关键词前置与个人定位
+- work-experience：聚焦 STAR 法则和量化成果
+- skills：聚焦关键词补齐
+- project：聚焦产品/技术闭环与业务价值
+
 返回结果必须是一个合法的 JSON 数组，包含以下字段：
 [
   {
@@ -105,16 +160,22 @@ ${JSON.stringify(matchResult, null, 2)}
   try {
     // temperature=0 保证 AI 建议的稳定性（同样的输入产生近似输出）
     const response = await client.generateWithRetry(prompt, 3, { temperature: 0 });
-    const jsonStr = extractJsonArray(response.text);
-    const suggestions: OptimizationSuggestion[] = JSON.parse(jsonStr);
+    const parsed = parseAISuggestionsWithZod(response.text);
 
-    // 给所有生成的建议确保有 id
-    return sortSuggestions(suggestions.map(s => ({
+    if (!parsed) {
+      return null;
+    }
+
+    // Zod 校验通过，组装对外返回结构（reason 为 required，但 AI 可能省略，兜底为空串）
+    return sortSuggestions(parsed.map(s => ({
       ...s,
-      id: s.id || generateId()
+      currentContent: s.currentContent ?? undefined,
+      suggestedContent: s.suggestedContent ?? undefined,
+      reason: s.reason ?? '',
+      id: s.id || generateId(),
     })));
   } catch (error) {
-    console.error('AI 优化建议解析失败:', error);
+    logger.error('AI 优化建议解析失败', error instanceof Error ? error : undefined, 'optimization-advisor');
     return null;
   }
 }

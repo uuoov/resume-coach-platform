@@ -5,6 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth-service';
+import { logger } from '../utils/logger';
 
 // 扩展 Express Request 类型
 declare global {
@@ -62,7 +63,7 @@ export const requireAuth = async (
 
     next();
   } catch (error) {
-    console.error('认证中间件错误:', error);
+    logger.error('认证中间件错误', error instanceof Error ? error : undefined, 'auth-middleware');
     res.status(500).json({
       success: false,
       error: '认证服务异常',

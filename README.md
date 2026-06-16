@@ -38,7 +38,10 @@ AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定�
 | 后端 | Node.js, Express, TypeScript |
 | 前端 | React, Vite, MUI |
 | 数据库 | PostgreSQL, Prisma ORM |
+| 缓存 | Redis (可选，best-effort 降级) |
+| 公司信息抓取 | Tavily REST API (可选，缺省走 Mock) |
 | AI 接入 | DeepSeek / DashScope / OpenAI-compatible API |
+| 限流 | express-rate-limit (AI 端点 30/15min，全局 100/15min) |
 | 文件解析 | pdf-parse, mammoth |
 | PDF 生成 | PDFKit |
 | 测试 | Jest, Supertest |
@@ -56,6 +59,8 @@ flowchart LR
   API --> Optimizer["Optimization Advisor"]
   API --> PDF["PDF Export"]
   API --> DB[("PostgreSQL")]
+  API --> Redis[("Redis 可选")]
+  API --> Search["Tavily Search 可选"]
   API --> Files["Uploads / Object Storage"]
   Analyzer --> AI["AI Provider"]
   Optimizer --> AI
@@ -125,6 +130,18 @@ JWT_SECRET=replace_with_a_long_random_secret
 DEEPSEEK_API_KEY=your_deepseek_api_key
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
+```
+
+可选增强（详见 `.env.example`）：
+
+```env
+# 公司信息抓取：未配置则公司信息退回内置 Mock 数据
+# TAVILY_API_KEY=your_tavily_api_key
+
+# Redis 缓存：未配置则服务降级为无缓存（所有操作静默跳过）
+# REDIS_URL=redis://localhost:6379
+
+# BCRYPT_ROUNDS：默认 12，与 docker-compose 注入项对齐
 ```
 
 生产环境不要开启内存认证降级，不要提交 `.env`、`.env.local`、`.env.production`。
