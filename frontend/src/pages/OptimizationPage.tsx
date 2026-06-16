@@ -70,6 +70,7 @@ export default function OptimizationPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [activeOriginalContent, setActiveOriginalContent] = useState<string>('');
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const hasRequestedSuggestions = useRef(false);
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function OptimizationPage() {
 
     setSelectedSuggestion(suggestion.id);
     setActiveOriginalContent(originalContent);
+    setGenerateError(null);
     try {
       const content = await api.generateOptimizedContent(
         resume,
@@ -109,6 +111,8 @@ export default function OptimizationPage() {
       );
       setOptimizedContent(content);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI 内容生成失败，请稍后重试';
+      setGenerateError(message);
       console.error('生成优化内容失败:', err);
     } finally {
       setSelectedSuggestion(null);
@@ -364,6 +368,13 @@ export default function OptimizationPage() {
               </Button>
             )}
           </Box>
+        </Alert>
+      )}
+
+      {generateError && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setGenerateError(null)}>
+          <AlertTitle>AI 内容生成失败</AlertTitle>
+          {generateError}
         </Alert>
       )}
 

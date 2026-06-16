@@ -82,16 +82,11 @@ export const config = {
     },
   },
 
-  // 企业信息 API 配置
-  companyInfo: {
-    qichachaApiKey: process.env.QICHACHA_API_KEY || '',
-  },
+  // 企业信息 API 配置（预留，目前未启用任何外部企业信息 API）
+  companyInfo: {},
 
-  // 搜索服务配置（用于公司信息抓取）
+  // 搜索服务配置（保留扩展位，目前未启用）
   search: {
-    tavilyApiKey: readApiKey('TAVILY_API_KEY') || '',
-    tavilyBaseUrl: process.env.TAVILY_BASE_URL || 'https://api.tavily.com',
-    braveSearchApiKey: readApiKey('BRAVE_SEARCH_API_KEY') || '',
     requestTimeoutMs: parseInt(process.env.SEARCH_TIMEOUT_MS || '5000', 10),
   },
 

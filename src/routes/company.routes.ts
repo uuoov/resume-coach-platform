@@ -18,7 +18,7 @@ router.get('/query', optionalAuth, async (req: Request, res: Response) => {
     const { name } = req.query;
 
     if (!name) {
-      return res.status(400).json({ error: '缺少 name 参数' });
+      return res.status(400).json({ success: false, error: '缺少 name 参数' });
     }
 
     const companyInfo = await getCompanyInfo(name as string);
@@ -26,7 +26,7 @@ router.get('/query', optionalAuth, async (req: Request, res: Response) => {
     res.json({ success: true, data: companyInfo });
   } catch (error) {
     logger.error('查询公司信息失败', error instanceof Error ? error : undefined, 'company-routes');
-    res.status(500).json({ error: '查询公司信息失败', message: String(error) });
+    res.status(500).json({ success: false, error: '查询公司信息失败', message: String(error) });
   }
 });
 
@@ -36,7 +36,7 @@ router.post('/auto-query', optionalAuth, aiRateLimiter, async (req: Request, res
     const { jdText } = req.body;
 
     if (!jdText) {
-      return res.status(400).json({ error: '缺少 jdText 参数' });
+      return res.status(400).json({ success: false, error: '缺少 jdText 参数' });
     }
 
     const companyInfo = await autoQueryCompanyInfo(jdText);
@@ -44,7 +44,7 @@ router.post('/auto-query', optionalAuth, aiRateLimiter, async (req: Request, res
     res.json({ success: true, data: companyInfo });
   } catch (error) {
     logger.error('自动查询公司信息失败', error instanceof Error ? error : undefined, 'company-routes');
-    res.status(500).json({ error: '自动查询公司信息失败', message: String(error) });
+    res.status(500).json({ success: false, error: '自动查询公司信息失败', message: String(error) });
   }
 });
 

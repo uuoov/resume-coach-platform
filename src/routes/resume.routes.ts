@@ -68,7 +68,7 @@ router.post('/parse', optionalAuth, aiRateLimiter, upload.single('file'), async 
       filePath = req.body.filePath;
       fileType = req.body.fileType;
     } else {
-      return res.status(400).json({ error: '缺少文件参数' });
+      return res.status(400).json({ success: false, error: '缺少文件参数' });
     }
 
     const resume = await parseResume(filePath, fileType);
@@ -95,7 +95,7 @@ router.post('/parse', optionalAuth, aiRateLimiter, upload.single('file'), async 
     res.json({ success: true, data: resume });
   } catch (error) {
     logger.error('简历解析失败', error instanceof Error ? error : undefined, 'resume-routes');
-    res.status(500).json({ error: '简历解析失败', message: String(error) });
+    res.status(500).json({ success: false, error: '简历解析失败', message: String(error) });
   }
 });
 
@@ -105,7 +105,7 @@ router.post('/export-pdf', optionalAuth, async (req: Request, res: Response) => 
     const { resume, template, filename } = req.body;
 
     if (!resume) {
-      return res.status(400).json({ error: '缺少 resume 参数' });
+      return res.status(400).json({ success: false, error: '缺少 resume 参数' });
     }
 
     const pdfBuffer = await generateResumePDF({
@@ -120,9 +120,9 @@ router.post('/export-pdf', optionalAuth, async (req: Request, res: Response) => 
   } catch (error) {
     logger.error('PDF 导出失败', error instanceof Error ? error : undefined, 'resume-routes');
     res.status(500).json({
+      success: false,
       error: 'PDF 导出失败',
       message: String(error),
-      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     });
   }
 });
@@ -133,7 +133,7 @@ router.post('/preview-pdf', optionalAuth, async (req: Request, res: Response) =>
     const { resume, template } = req.body;
 
     if (!resume) {
-      return res.status(400).json({ error: '缺少 resume 参数' });
+      return res.status(400).json({ success: false, error: '缺少 resume 参数' });
     }
 
     const pdfBuffer = await generateResumePDF({
@@ -147,9 +147,9 @@ router.post('/preview-pdf', optionalAuth, async (req: Request, res: Response) =>
   } catch (error) {
     logger.error('PDF 预览失败', error instanceof Error ? error : undefined, 'resume-routes');
     res.status(500).json({
+      success: false,
       error: 'PDF 预览失败',
       message: String(error),
-      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     });
   }
 });
@@ -157,9 +157,9 @@ router.post('/preview-pdf', optionalAuth, async (req: Request, res: Response) =>
 // 所有权校验：确保 resume 属于当前登录用户
 async function ensureResumeOwner(resumeId: string, userId: string) {
   const resume = await getResumeById(resumeId);
-  if (!resume) return { status: 404 as const, body: { error: '简历不存在' } };
+  if (!resume) return { status: 404 as const, body: { success: false as const, error: '简历不存在' } };
   if (resume.userId && resume.userId !== userId) {
-    return { status: 403 as const, body: { error: '无权访问此简历' } };
+    return { status: 403 as const, body: { success: false as const, error: '无权访问此简历' } };
   }
   return { resume };
 }
@@ -169,14 +169,14 @@ router.get('/:id/versions', requireAuth, async (req: Request, res: Response) => 
   try {
     const ownership = await ensureResumeOwner(req.params.id, req.userId!);
     if ('body' in ownership) {
-      return res.status(ownership.status ?? 500).json(ownership.body as any);
+      return res.status(ownership.status ?? 500).json(ownership.body);
     }
 
     const versions = await getResumeVersions(req.params.id);
     res.json({ success: true, data: versions });
   } catch (error) {
     logger.error('获取版本列表失败', error instanceof Error ? error : undefined, 'resume-routes');
-    res.status(500).json({ error: '获取版本列表失败', message: String(error) });
+    res.status(500).json({ success: false, error: '获取版本列表失败', message: String(error) });
   }
 });
 
@@ -185,19 +185,19 @@ router.post('/:id/versions', requireAuth, async (req: Request, res: Response) =>
   try {
     const ownership = await ensureResumeOwner(req.params.id, req.userId!);
     if ('body' in ownership) {
-      return res.status(ownership.status ?? 500).json(ownership.body as any);
+      return res.status(ownership.status ?? 500).json(ownership.body);
     }
 
     const { content } = req.body;
     if (!content) {
-      return res.status(400).json({ error: '缺少 content 参数' });
+      return res.status(400).json({ success: false, error: '缺少 content 参数' });
     }
 
     const newVersion = await createResumeVersion(req.params.id, content);
     res.json({ success: true, data: newVersion });
   } catch (error) {
     logger.error('创建版本失败', error instanceof Error ? error : undefined, 'resume-routes');
-    res.status(500).json({ error: '创建版本失败', message: String(error) });
+    res.status(500).json({ success: false, error: '创建版本失败', message: String(error) });
   }
 });
 
@@ -206,16 +206,16 @@ router.get('/version/:versionId', requireAuth, async (req: Request, res: Respons
   try {
     const version = await getResumeById(req.params.versionId);
     if (!version) {
-      return res.status(404).json({ error: '版本不存在' });
+      return res.status(404).json({ success: false, error: '版本不存在' });
     }
     // 版本也是 Resume 记录，需校验归属
     if (version.userId && version.userId !== req.userId) {
-      return res.status(403).json({ error: '无权访问此简历' });
+      return res.status(403).json({ success: false, error: '无权访问此简历' });
     }
     res.json({ success: true, data: version });
   } catch (error) {
     logger.error('获取版本失败', error instanceof Error ? error : undefined, 'resume-routes');
-    res.status(500).json({ error: '获取版本失败', message: String(error) });
+    res.status(500).json({ success: false, error: '获取版本失败', message: String(error) });
   }
 });
 
@@ -225,10 +225,10 @@ router.post('/version/:versionId/revert', requireAuth, async (req: Request, res:
     const version = await getResumeById(req.params.versionId);
 
     if (!version) {
-      return res.status(404).json({ error: '版本不存在' });
+      return res.status(404).json({ success: false, error: '版本不存在' });
     }
     if (version.userId && version.userId !== req.userId) {
-      return res.status(403).json({ error: '无权访问此简历' });
+      return res.status(403).json({ success: false, error: '无权访问此简历' });
     }
 
     const rootId = version.parentId || version.id;
@@ -237,7 +237,7 @@ router.post('/version/:versionId/revert', requireAuth, async (req: Request, res:
     res.json({ success: true, data: newVersion });
   } catch (error) {
     logger.error('恢复版本失败', error instanceof Error ? error : undefined, 'resume-routes');
-    res.status(500).json({ error: '恢复版本失败', message: String(error) });
+    res.status(500).json({ success: false, error: '恢复版本失败', message: String(error) });
   }
 });
 

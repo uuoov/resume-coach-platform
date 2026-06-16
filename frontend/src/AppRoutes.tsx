@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { CircularProgress, Box } from '@mui/material';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 
@@ -17,6 +18,12 @@ const RouteFallback = () => (
   <div className="route-fallback" aria-label="页面加载中" aria-busy="true" />
 );
 
+const FullScreenLoader = () => (
+  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+    <CircularProgress />
+  </Box>
+);
+
 const LazyRoute = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<RouteFallback />}>{children}</Suspense>
 );
@@ -25,7 +32,7 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return null; // 或者显示加载指示器
+    return <FullScreenLoader />;
   }
 
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -35,7 +42,7 @@ const AdminRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return <FullScreenLoader />;
   }
 
   if (!user) {
@@ -53,7 +60,7 @@ const PublicRoute = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return null; // 或者显示加载指示器
+    return <FullScreenLoader />;
   }
 
   return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>;

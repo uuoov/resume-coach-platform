@@ -1,15 +1,19 @@
 /**
  * 公司信息查询服务
  *
- * 数据获取优先级：
+ * 数据获取优先级（Plan B，去除 Tavily）：
  * 1. Redis 缓存命中（TTL 24h）→ 直接返回
  * 2. PostgreSQL 命中 → 回写缓存 → 返回
- * 3. Tavily Web 搜索 → AI 结构化提取 → 写 DB + 缓存
- * 4. 内置 Mock（5 家头部公司）→ 兜底
+ * 3. LLM 知识库 + Jina Reader 兜底 → 写 DB + 缓存
+ *    - Step A: 直接问 LLM（知名公司命中）
+ *    - Step B: LLM 给官网 URL → r.jina.ai 抓取官网 markdown → 再问 LLM
+ * 4. 内置 Mock（5 家头部公司）+ 通用模板兜底
  *
  * 关键设计：
- * - 全链路 try/catch，任何环节失败都退到下一层，避免阻塞 JD 分析主流程
- * - Mock 仅做兜底，不主动暴露给真实公司名
+ * - 所有返回的 CompanyInfo 都带 `source` 字段，UI 可据此显示来源徽章
+ * - 通用模板兜底明确标记 source='fallback'，UI 应隐藏/弱化这些字段
+ * - 只把公司名发给已在用的 LLM provider（DeepSeek/OpenAI/DashScope），
+ *   不再泄露给第三方搜索 API
  */
 
 import {
@@ -18,15 +22,9 @@ import {
   updateCompany,
 } from '../repositories/company-repository';
 import { cacheGet, cacheSet, cacheInvalidate } from './cache';
-import {
-  createSearchProvider,
-  type SearchProvider,
-  type SearchResult,
-} from './search-provider';
-import { createConfiguredAIClient } from '../utils/ai-client';
-import { generateWithAudit } from './ai-audit';
+import { fetchCompanyInfoFromAI } from './company-info-provider';
 import { logger } from '../utils/logger';
-import { getMockCompanyInfo } from './mock-companies';
+import { getMockCompanyInfo, isMockCompany } from './mock-companies';
 
 /**
  * 公司信息类型定义
@@ -40,6 +38,14 @@ export interface CompanyInfo {
   description?: string;
   culture?: any;
   techStack?: string[];
+  /**
+   * 数据来源（前端用于显示来源徽章）
+   * - db: 数据库已有记录（可能是 mock seed 或之前 AI 抓取的）
+   * - ai-knowledge: LLM 直接返回（知名公司）
+   * - ai-web: LLM + Jina Reader 抓官网后返回
+   * - fallback: 通用模板兜底（字段多为占位）
+   */
+  source?: 'db' | 'ai-knowledge' | 'ai-web' | 'fallback';
 }
 
 const CACHE_TTL_COMPANY = 24 * 60 * 60; // 24 小时
@@ -105,10 +111,14 @@ export function extractCompanyNameFromJD(jdText: string): string | null {
  *
  * 内置 5 家头部公司的数据已迁移到 src/services/mock-companies.ts，
  * 并在启动时 seed 到 DB。这里保留函数签名作为兼容入口。
- * 通用兜底模板由 getFallbackCompany 提供（未命中的公司名生成默认结构）。
  */
 function getMockCompanyInfoLocal(companyName: string): CompanyInfo {
-  return getMockCompanyInfo(companyName);
+  const isKnown = isMockCompany(companyName);
+  const data = getMockCompanyInfo(companyName);
+  return {
+    ...data,
+    source: isKnown ? 'fallback' : 'fallback',
+  };
 }
 
 function mapDbRowToCompanyInfo(row: any): CompanyInfo {
@@ -121,126 +131,13 @@ function mapDbRowToCompanyInfo(row: any): CompanyInfo {
     description: row.description ?? undefined,
     culture: row.culture ?? undefined,
     techStack: row.techStack,
+    source: 'db',
   };
 }
 
 /**
- * 从搜索结果中提取 JSON 对象（容错处理 ``` 代码块包裹）
- */
-function extractJsonFromText(text: string): string {
-  const trimmed = text.trim();
-  // 去除 ```json ... ``` 包裹
-  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    return fenceMatch[1].trim();
-  }
-  // 直接截取第一段 { ... }
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    return trimmed.slice(start, end + 1);
-  }
-  return trimmed;
-}
-
-/**
- * 通过 Web 搜索 + AI 提取结构化公司信息
- */
-async function fetchCompanyInfoViaSearch(
-  companyName: string,
-  provider: SearchProvider
-): Promise<CompanyInfo | null> {
-  let results: SearchResult[];
-  try {
-    results = await provider.search(
-      `${companyName} 公司简介 行业 业务范围 技术栈 企业文化 地址 官网`,
-      { maxResults: 5 }
-    );
-  } catch (err) {
-    logger.warn('公司信息搜索失败', 'company-info', {
-      name: companyName,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return null;
-  }
-
-  if (results.length === 0) {
-    return null;
-  }
-
-  const context = results
-    .map((r) => `## ${r.title}\nURL: ${r.url}\n${r.content}`)
-    .join('\n\n');
-
-  const aiClient = createConfiguredAIClient();
-  if (!aiClient) {
-    // 没有 AI 时退化为：用首条搜索结果作为 description
-    return {
-      name: companyName,
-      description: results[0]?.content || '',
-      website: results[0]?.url || undefined,
-    };
-  }
-
-  const prompt = `你是一位企业信息分析师。请根据以下搜索结果，提取"${companyName}"的结构化信息。
-
-搜索结果：
-${context}
-
-请严格按照以下 JSON 格式返回（不要包含 markdown 代码块）：
-{
-  "name": "${companyName}",
-  "industry": "行业分类（如：互联网/电商、通信/科技、金融等）",
-  "size": "公司规模（如：20000人以上、500-2000人）",
-  "location": "总部所在地",
-  "website": "官网URL，没有则为空字符串",
-  "description": "不超过200字的公司简介",
-  "culture": {
-    "values": ["价值观1", "价值观2"],
-    "workStyle": "工作风格描述"
-  },
-  "techStack": ["技术1", "技术2"]
-}
-
-如果某项信息无法从搜索结果中获取，填 null 或空字符串。不要编造数据。`;
-
-  try {
-    const response = await generateWithAudit(
-      aiClient,
-      { service: 'company-info' },
-      prompt,
-      3,
-      undefined
-    );
-    const jsonStr = extractJsonFromText(response.text);
-    const parsed = JSON.parse(jsonStr) as Partial<CompanyInfo>;
-
-    return {
-      name: companyName,
-      industry: parsed.industry || undefined,
-      size: parsed.size || undefined,
-      location: parsed.location || undefined,
-      website: parsed.website || undefined,
-      description: parsed.description || undefined,
-      culture: parsed.culture || undefined,
-      techStack: Array.isArray(parsed.techStack) ? parsed.techStack : undefined,
-    };
-  } catch (err) {
-    logger.warn('AI 提取公司信息失败，退回原始搜索内容', 'company-info', {
-      name: companyName,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return {
-      name: companyName,
-      description: results[0]?.content || '',
-      website: results[0]?.url || undefined,
-    };
-  }
-}
-
-/**
  * 获取公司信息
- * 数据源优先级：Redis 缓存 → DB → Web 搜索 + AI 提取 → Mock 兜底
+ * 数据源优先级：Redis 缓存 → DB → LLM 知识库 + Jina Reader → Mock 兜底
  */
 export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> {
   const cacheKey = `${CACHE_PREFIX}${companyName}`;
@@ -266,23 +163,49 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
     });
   }
 
-  // 3. Web 搜索 + AI 提取
-  const provider = createSearchProvider();
-  if (provider) {
-    const searched = await fetchCompanyInfoViaSearch(companyName, provider);
-    if (searched) {
+  // 3. LLM 知识库 + Jina Reader
+  try {
+    const aiInfo = await fetchCompanyInfoFromAI(companyName);
+    if (aiInfo) {
+      const info: CompanyInfo = {
+        name: aiInfo.name,
+        industry: aiInfo.industry,
+        size: aiInfo.size,
+        location: aiInfo.location,
+        website: aiInfo.website,
+        description: aiInfo.description,
+        culture: aiInfo.culture,
+        techStack: aiInfo.techStack,
+        source: aiInfo.source,
+      };
       // 写入数据库（失败不阻塞）
       try {
-        await createCompany(searched as any);
+        await createCompany({
+          name: info.name,
+          industry: info.industry,
+          size: info.size,
+          location: info.location,
+          website: info.website,
+          description: info.description,
+          culture: info.culture,
+          techStack: info.techStack,
+          source: aiInfo.source === 'ai-web' ? 'search' : 'manual',
+        });
       } catch (dbError) {
+        // 可能是 P2002 unique 冲突（并发写入），或 DB 不可用
         logger.warn('公司信息入库失败', 'company-info', {
           name: companyName,
           error: dbError instanceof Error ? dbError.message : String(dbError),
         });
       }
-      await cacheSet(cacheKey, searched, CACHE_TTL_COMPANY);
-      return searched;
+      await cacheSet(cacheKey, info, CACHE_TTL_COMPANY);
+      return info;
     }
+  } catch (aiError) {
+    logger.warn('LLM 公司信息查询失败，退回 Mock', 'company-info', {
+      name: companyName,
+      error: aiError instanceof Error ? aiError.message : String(aiError),
+    });
   }
 
   // 4. Mock 兜底
@@ -313,13 +236,19 @@ export async function invalidateCompanyCache(companyName: string): Promise<void>
   const cacheKey = `${CACHE_PREFIX}${companyName}`;
   try {
     await cacheInvalidate(cacheKey);
-  } catch {
-    // 静默失败
+  } catch (err) {
+    logger.warn('缓存失效失败', 'company-info', {
+      name: companyName,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
 /**
- * 自动查询公司信息（从 JD 文本中提取公司名）
+ * 自动查询公司信息
+ *
+ * 隐私改进：只在能从 JD 中识别出明确公司名时才查询，
+ * 不再把整个 JD 文本发给 LLM。
  */
 export async function autoQueryCompanyInfo(
   jdText: string

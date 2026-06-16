@@ -73,7 +73,11 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     const data = await client.get(key);
     return data ? (JSON.parse(data) as T) : null;
-  } catch {
+  } catch (err) {
+    logger.warn('缓存读取失败', 'cache', {
+      key,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
@@ -122,8 +126,11 @@ export async function cacheInvalidate(prefix: string): Promise<void> {
         await client.del(...keys);
       }
     } while (cursor !== '0');
-  } catch {
-    // 静默失败
+  } catch (err) {
+    logger.warn('缓存失效失败', 'cache', {
+      prefix,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

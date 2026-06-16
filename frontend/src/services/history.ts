@@ -40,7 +40,13 @@ export function readHistory(): HistoryRecord[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (err) {
+    console.warn('[history] read 解析失败，清空重建', err);
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch {
+      /* ignore */
+    }
     return [];
   }
 }
@@ -51,13 +57,14 @@ export function readHistory(): HistoryRecord[] {
 function writeHistory(records: HistoryRecord[]): void {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(records));
-  } catch {
+  } catch (err) {
+    console.warn('[history] write 失败，尝试裁剪后重写', err);
     // 配额超限 → 删掉最旧的一半再试
     try {
       const trimmed = records.slice(0, Math.ceil(records.length / 2));
       localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
-    } catch {
-      // ignore
+    } catch (err2) {
+      console.warn('[history] 重试仍失败，localStorage 可能不可用', err2);
     }
   }
 }

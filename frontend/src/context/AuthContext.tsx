@@ -135,7 +135,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       'resume',
       'jdAnalysis',
       'matchResult',
-      'optimizationSuggestions',
     ];
     SESSION_KEYS_TO_REMOVE.forEach((key) => sessionStorage.removeItem(key));
   };

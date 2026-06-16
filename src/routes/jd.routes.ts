@@ -19,7 +19,7 @@ router.post('/analyze', optionalAuth, aiRateLimiter, async (req: Request, res: R
     const { jobTitle, company, jdText } = req.body;
 
     if (!jdText) {
-      return res.status(400).json({ error: '缺少 jdText 参数' });
+      return res.status(400).json({ success: false, error: '缺少 jdText 参数' });
     }
 
     const analysis = await analyzeJD(jobTitle || '', company || '', jdText);
@@ -46,7 +46,7 @@ router.post('/analyze', optionalAuth, aiRateLimiter, async (req: Request, res: R
     res.json({ success: true, data: analysis });
   } catch (error) {
     logger.error('JD 分析失败', error instanceof Error ? error : undefined, 'jd-routes');
-    res.status(500).json({ error: 'JD 分析失败', message: String(error) });
+    res.status(500).json({ success: false, error: 'JD 分析失败', message: String(error) });
   }
 });
 

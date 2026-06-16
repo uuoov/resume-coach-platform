@@ -21,7 +21,7 @@ router.post('/suggest', optionalAuth, aiRateLimiter, async (req: Request, res: R
     const { resume, jdAnalysis, matchResult, suggestionId, suggestion } = req.body;
 
     if (!resume || !jdAnalysis || !matchResult) {
-      return res.status(400).json({ error: '缺少必要参数' });
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
 
     // 如果请求生成优化后的内容
@@ -30,7 +30,7 @@ router.post('/suggest', optionalAuth, aiRateLimiter, async (req: Request, res: R
       const targetSuggestion = suggestion || suggestions.find(s => s.id === suggestionId);
 
       if (!targetSuggestion) {
-        return res.status(404).json({ error: '未找到该建议' });
+        return res.status(404).json({ success: false, error: '未找到该建议' });
       }
 
       const optimizedContent = await generateOptimizedContent(
@@ -48,7 +48,7 @@ router.post('/suggest', optionalAuth, aiRateLimiter, async (req: Request, res: R
     res.json({ success: true, data: suggestions });
   } catch (error) {
     logger.error('生成优化建议失败', error instanceof Error ? error : undefined, 'optimize-routes');
-    res.status(500).json({ error: '生成优化建议失败', message: String(error) });
+    res.status(500).json({ success: false, error: '生成优化建议失败', message: String(error) });
   }
 });
 

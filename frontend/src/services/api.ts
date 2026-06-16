@@ -170,6 +170,8 @@ export interface CompanyInfo {
     workStyle?: string;
   };
   techStack?: string[];
+  /** 数据来源（UI 用于显示来源徽章） */
+  source?: 'db' | 'ai-knowledge' | 'ai-web' | 'fallback';
 }
 
 export interface JDAnalysis {

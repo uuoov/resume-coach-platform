@@ -19,7 +19,7 @@ router.post('/calculate', optionalAuth, aiRateLimiter, async (req: Request, res:
     const { resume, jdAnalysis, resumeId, jdId } = req.body;
 
     if (!resume || !jdAnalysis) {
-      return res.status(400).json({ error: '缺少 resume 或 jdAnalysis 参数' });
+      return res.status(400).json({ success: false, error: '缺少 resume 或 jdAnalysis 参数' });
     }
 
     const matchResult = await calculateMatch(resume, jdAnalysis);
@@ -42,7 +42,7 @@ router.post('/calculate', optionalAuth, aiRateLimiter, async (req: Request, res:
     res.json({ success: true, data: matchResult });
   } catch (error) {
     logger.error('匹配度计算失败', error instanceof Error ? error : undefined, 'match-routes');
-    res.status(500).json({ error: '匹配度计算失败', message: String(error) });
+    res.status(500).json({ success: false, error: '匹配度计算失败', message: String(error) });
   }
 });
 
