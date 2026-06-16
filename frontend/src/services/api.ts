@@ -172,6 +172,17 @@ export interface CompanyInfo {
   techStack?: string[];
   /** 数据来源（UI 用于显示来源徽章） */
   source?: 'db' | 'ai-knowledge' | 'ai-web' | 'fallback';
+  /** 岗位洞察（公司 + 岗位组合的特定信息） */
+  roleInsights?: {
+    team?: string;
+    techStack?: string[];
+    typicalRequirements?: string[];
+    workStyle?: string;
+    interviewFocus?: string[];
+    careerPath?: string;
+    perks?: string[];
+    confidence?: number;
+  };
 }
 
 export interface JDAnalysis {
@@ -348,9 +359,9 @@ export const api = {
   /**
    * 查询公司信息
    */
-  queryCompanyInfo: async (name: string): Promise<CompanyInfo> => {
+  queryCompanyInfo: async (name: string, jobTitle?: string): Promise<CompanyInfo> => {
     const response = await apiClient.get('/company/query', {
-      params: { name },
+      params: { name, jobTitle },
     });
     return response.data.data;
   },
@@ -358,8 +369,8 @@ export const api = {
   /**
    * 自动查询公司信息（从 JD 文本中提取）
    */
-  autoQueryCompanyInfo: async (jdText: string): Promise<CompanyInfo | null> => {
-    const response = await apiClient.post('/company/auto-query', { jdText });
+  autoQueryCompanyInfo: async (jdText: string, jobTitle?: string): Promise<CompanyInfo | null> => {
+    const response = await apiClient.post('/company/auto-query', { jdText, jobTitle });
     return response.data.data;
   },
 

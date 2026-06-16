@@ -20,12 +20,12 @@ export async function analyzeJD(
   company: string,
   jdText: string
 ): Promise<JDAnalysis> {
-  // 自动查询公司信息
+  // 自动查询公司信息（带 jobTitle 以触发 roleInsights）
   let companyInfo = null;
   if (company) {
-    companyInfo = await autoQueryCompanyInfo(company);
+    companyInfo = await autoQueryCompanyInfo(company, jobTitle || undefined);
   } else {
-    companyInfo = await autoQueryCompanyInfo(jdText);
+    companyInfo = await autoQueryCompanyInfo(jdText, jobTitle || undefined);
   }
 
   // 调用 AI 进行分析

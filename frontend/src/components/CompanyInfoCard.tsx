@@ -7,6 +7,9 @@ import {
   Divider,
   Link,
   Alert,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import type { ReactElement } from 'react';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -18,6 +21,12 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import WorkIcon from '@mui/icons-material/Work';
+import GroupsIcon from '@mui/icons-material/Groups';
+import SchoolIcon from '@mui/icons-material/School';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import type { CompanyInfo } from '../services/api';
 
 interface CompanyInfoCardProps {
@@ -54,6 +63,17 @@ export default function CompanyInfoCard({ companyInfo }: CompanyInfoCardProps) {
   const source = companyInfo.source || 'fallback';
   const isFallback = source === 'fallback';
   const sourceMeta = SOURCE_META[source];
+  const roleInsights = companyInfo.roleInsights;
+  const hasRoleInsights = Boolean(
+    roleInsights &&
+      (roleInsights.team ||
+        roleInsights.techStack?.length ||
+        roleInsights.typicalRequirements?.length ||
+        roleInsights.workStyle ||
+        roleInsights.interviewFocus?.length ||
+        roleInsights.careerPath ||
+        roleInsights.perks?.length)
+  );
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -202,6 +222,147 @@ export default function CompanyInfoCard({ companyInfo }: CompanyInfoCardProps) {
             )}
           </Box>
         </Box>
+      )}
+
+      {/* 岗位洞察（公司 + 岗位组合的特定信息） */}
+      {hasRoleInsights && roleInsights && (
+        <Accordion
+          elevation={0}
+          sx={{
+            mt: 2,
+            bgcolor: 'primary.50',
+            border: '1px solid',
+            borderColor: 'primary.200',
+            borderRadius: 2,
+            '&:before': { display: 'none' },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WorkIcon sx={{ fontSize: 18, color: 'primary.main' }} />
+              <Typography variant="subtitle2" fontWeight={600} color="primary.main">
+                岗位洞察（公司 × 岗位）
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            {roleInsights.team && (
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <GroupsIcon sx={{ fontSize: 18, color: 'text.secondary', mt: 0.2 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    团队 / 业务线
+                  </Typography>
+                  <Typography variant="body2">{roleInsights.team}</Typography>
+                </Box>
+              </Box>
+            )}
+
+            {roleInsights.techStack && roleInsights.techStack.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                  <CodeIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="caption" color="text.secondary">
+                    该岗位实际使用的技术栈
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {roleInsights.techStack.map((tech, idx) => (
+                    <Chip
+                      key={idx}
+                      label={tech}
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {roleInsights.typicalRequirements && roleInsights.typicalRequirements.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                  <SchoolIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="caption" color="text.secondary">
+                    该公司该岗位的典型要求
+                  </Typography>
+                </Box>
+                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                  {roleInsights.typicalRequirements.map((req, idx) => (
+                    <Box component="li" key={idx} sx={{ mb: 0.5 }}>
+                      <Typography variant="body2">{req}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {roleInsights.workStyle && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary">
+                  工作风格
+                </Typography>
+                <Typography variant="body2">{roleInsights.workStyle}</Typography>
+              </Box>
+            )}
+
+            {roleInsights.interviewFocus && roleInsights.interviewFocus.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                  <LightbulbIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                  <Typography variant="caption" color="text.secondary">
+                    面试考察重点
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {roleInsights.interviewFocus.map((focus, idx) => (
+                    <Chip
+                      key={idx}
+                      label={focus}
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {roleInsights.careerPath && (
+              <Box sx={{ mb: 2, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                <TrendingUpIcon sx={{ fontSize: 18, color: 'text.secondary', mt: 0.2 }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    职业发展路径
+                  </Typography>
+                  <Typography variant="body2">{roleInsights.careerPath}</Typography>
+                </Box>
+              </Box>
+            )}
+
+            {roleInsights.perks && roleInsights.perks.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  特殊吸引力 / 注意事项
+                </Typography>
+                <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                  {roleInsights.perks.map((perk, idx) => (
+                    <Box component="li" key={idx} sx={{ mb: 0.5 }}>
+                      <Typography variant="body2">{perk}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {typeof roleInsights.confidence === 'number' && (
+              <Alert severity="info" sx={{ mt: 2 }} icon={<InfoOutlinedIcon />}>
+                该岗位洞察基于 AI 知识库（置信度 {(roleInsights.confidence * 100).toFixed(0)}%），请结合实际情况判断。
+              </Alert>
+            )}
+          </AccordionDetails>
+        </Accordion>
       )}
     </Paper>
   );

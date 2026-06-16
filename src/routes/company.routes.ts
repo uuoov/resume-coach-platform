@@ -15,13 +15,16 @@ const router = Router();
 // 公司信息查询
 router.get('/query', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { name } = req.query;
+    const { name, jobTitle } = req.query;
 
     if (!name) {
       return res.status(400).json({ success: false, error: '缺少 name 参数' });
     }
 
-    const companyInfo = await getCompanyInfo(name as string);
+    const companyInfo = await getCompanyInfo(
+      name as string,
+      jobTitle ? (jobTitle as string) : undefined
+    );
 
     res.json({ success: true, data: companyInfo });
   } catch (error) {
@@ -33,13 +36,16 @@ router.get('/query', optionalAuth, async (req: Request, res: Response) => {
 // 自动查询公司信息（从 JD 文本中提取）
 router.post('/auto-query', optionalAuth, aiRateLimiter, async (req: Request, res: Response) => {
   try {
-    const { jdText } = req.body;
+    const { jdText, jobTitle } = req.body;
 
     if (!jdText) {
       return res.status(400).json({ success: false, error: '缺少 jdText 参数' });
     }
 
-    const companyInfo = await autoQueryCompanyInfo(jdText);
+    const companyInfo = await autoQueryCompanyInfo(
+      jdText,
+      jobTitle || undefined
+    );
 
     res.json({ success: true, data: companyInfo });
   } catch (error) {

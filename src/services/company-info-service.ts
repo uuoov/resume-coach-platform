@@ -46,6 +46,22 @@ export interface CompanyInfo {
    * - fallback: 通用模板兜底（字段多为占位）
    */
   source?: 'db' | 'ai-knowledge' | 'ai-web' | 'fallback';
+  /**
+   * 岗位洞察（公司 + 岗位组合的特定信息）
+   *
+   * 例如腾讯的前端工程师 vs 阿里的前端工程师，团队结构、技术栈、面试风格都不同。
+   * 仅当调用方提供了 jobTitle 才会填充。
+   */
+  roleInsights?: {
+    team?: string;
+    techStack?: string[];
+    typicalRequirements?: string[];
+    workStyle?: string;
+    interviewFocus?: string[];
+    careerPath?: string;
+    perks?: string[];
+    confidence?: number;
+  };
 }
 
 const CACHE_TTL_COMPANY = 24 * 60 * 60; // 24 小时
@@ -138,9 +154,17 @@ function mapDbRowToCompanyInfo(row: any): CompanyInfo {
 /**
  * 获取公司信息
  * 数据源优先级：Redis 缓存 → DB → LLM 知识库 + Jina Reader → Mock 兜底
+ *
+ * @param companyName 公司名（必填）
+ * @param jobTitle 岗位名（可选；提供时会附加 roleInsights 字段并影响 cache key）
  */
-export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> {
-  const cacheKey = `${CACHE_PREFIX}${companyName}`;
+export async function getCompanyInfo(
+  companyName: string,
+  jobTitle?: string
+): Promise<CompanyInfo> {
+  // cache key 包含 jobTitle，因为同一家公司不同岗位的 roleInsights 是不同的
+  const normalizedRole = jobTitle?.trim() ? `:${jobTitle.trim().toLowerCase()}` : '';
+  const cacheKey = `${CACHE_PREFIX}${companyName.toLowerCase()}${normalizedRole}`;
 
   // 1. Redis 缓存
   const cached = await cacheGet<CompanyInfo>(cacheKey);
@@ -148,13 +172,24 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
     return cached;
   }
 
-  // 2. 数据库
+  // 2. 数据库（只匹配公司名，不区分岗位；命中后用 ai 再补 roleInsights）
+  let dbRow: any = null;
   try {
-    const existing = await getCompanyByName(companyName);
-    if (existing) {
-      const info = mapDbRowToCompanyInfo(existing);
-      await cacheSet(cacheKey, info, CACHE_TTL_COMPANY);
-      return info;
+    dbRow = await getCompanyByName(companyName);
+    if (dbRow) {
+      const baseInfo = mapDbRowToCompanyInfo(dbRow);
+
+      // 如果已有 DB 记录但需要岗位洞察，且 DB 行里没有，则用 AI 补 roleInsights
+      if (jobTitle && !baseInfo.roleInsights) {
+        const roleOnly = await fetchRoleInsightsFromAI(companyName, jobTitle);
+        if (roleOnly) {
+          baseInfo.roleInsights = roleOnly;
+          baseInfo.source = baseInfo.source === 'db' ? 'ai-knowledge' : baseInfo.source;
+        }
+      }
+
+      await cacheSet(cacheKey, baseInfo, CACHE_TTL_COMPANY);
+      return baseInfo;
     }
   } catch (dbError) {
     logger.warn('公司信息数据库查询失败', 'company-info', {
@@ -165,7 +200,7 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
 
   // 3. LLM 知识库 + Jina Reader
   try {
-    const aiInfo = await fetchCompanyInfoFromAI(companyName);
+    const aiInfo = await fetchCompanyInfoFromAI(companyName, jobTitle);
     if (aiInfo) {
       const info: CompanyInfo = {
         name: aiInfo.name,
@@ -177,26 +212,29 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
         culture: aiInfo.culture,
         techStack: aiInfo.techStack,
         source: aiInfo.source,
+        roleInsights: aiInfo.roleInsights,
       };
-      // 写入数据库（失败不阻塞）
-      try {
-        await createCompany({
-          name: info.name,
-          industry: info.industry,
-          size: info.size,
-          location: info.location,
-          website: info.website,
-          description: info.description,
-          culture: info.culture,
-          techStack: info.techStack,
-          source: aiInfo.source === 'ai-web' ? 'search' : 'manual',
-        });
-      } catch (dbError) {
-        // 可能是 P2002 unique 冲突（并发写入），或 DB 不可用
-        logger.warn('公司信息入库失败', 'company-info', {
-          name: companyName,
-          error: dbError instanceof Error ? dbError.message : String(dbError),
-        });
+      // 写入数据库（失败不阻塞；只在 dbRow 不存在时写，避免覆盖）
+      if (!dbRow) {
+        try {
+          await createCompany({
+            name: info.name,
+            industry: info.industry,
+            size: info.size,
+            location: info.location,
+            website: info.website,
+            description: info.description,
+            culture: info.culture,
+            techStack: info.techStack,
+            source: aiInfo.source === 'ai-web' ? 'search' : 'manual',
+          });
+        } catch (dbError) {
+          // 可能是 P2002 unique 冲突（并发写入），或 DB 不可用
+          logger.warn('公司信息入库失败', 'company-info', {
+            name: companyName,
+            error: dbError instanceof Error ? dbError.message : String(dbError),
+          });
+        }
       }
       await cacheSet(cacheKey, info, CACHE_TTL_COMPANY);
       return info;
@@ -204,14 +242,47 @@ export async function getCompanyInfo(companyName: string): Promise<CompanyInfo> 
   } catch (aiError) {
     logger.warn('LLM 公司信息查询失败，退回 Mock', 'company-info', {
       name: companyName,
+      jobTitle: jobTitle || undefined,
       error: aiError instanceof Error ? aiError.message : String(aiError),
     });
   }
 
   // 4. Mock 兜底
   const mock = getMockCompanyInfoLocal(companyName);
+  // 即使是 mock，也尝试用 AI 补 roleInsights（如果 jobTitle 提供了）
+  if (jobTitle && !mock.roleInsights) {
+    const roleOnly = await fetchRoleInsightsFromAI(companyName, jobTitle);
+    if (roleOnly) {
+      mock.roleInsights = roleOnly;
+      // 如果 AI 能给出 roleInsights，把 source 升级
+      mock.source = 'ai-knowledge';
+    }
+  }
   await cacheSet(cacheKey, mock, CACHE_TTL_COMPANY);
   return mock;
+}
+
+/**
+ * 仅查询岗位洞察（用于 DB 已有公司信息但缺 roleInsights 的场景）
+ *
+ * 这是一次轻量 LLM 调用，只问岗位相关字段。
+ */
+/**
+ * 仅查询岗位洞察（用于 DB 已有公司信息但缺 roleInsights 的场景）
+ *
+ * 这是一次轻量 LLM 调用，只问岗位相关字段。
+ */
+async function fetchRoleInsightsFromAI(
+  companyName: string,
+  jobTitle: string
+): Promise<NonNullable<CompanyInfo['roleInsights']>> {
+  // 复用主 provider，但只关心 roleInsights 字段
+  const aiInfo = await fetchCompanyInfoFromAI(companyName, jobTitle).catch(() => null);
+  if (aiInfo?.roleInsights) {
+    return aiInfo.roleInsights;
+  }
+  // 兜底：返回空对象（避免类型问题）
+  return {};
 }
 
 /**
@@ -249,9 +320,13 @@ export async function invalidateCompanyCache(companyName: string): Promise<void>
  *
  * 隐私改进：只在能从 JD 中识别出明确公司名时才查询，
  * 不再把整个 JD 文本发给 LLM。
+ *
+ * @param jdText JD 全文（用于提取公司名）
+ * @param jobTitle 可选岗位名；提供时会附加 roleInsights
  */
 export async function autoQueryCompanyInfo(
-  jdText: string
+  jdText: string,
+  jobTitle?: string
 ): Promise<CompanyInfo | null> {
   const companyName = extractCompanyNameFromJD(jdText);
   if (!companyName) {
@@ -259,13 +334,13 @@ export async function autoQueryCompanyInfo(
   }
 
   try {
-    return await getCompanyInfo(companyName);
+    return await getCompanyInfo(companyName, jobTitle);
   } catch (error) {
     logger.error(
       '自动查询公司信息失败',
       error instanceof Error ? error : undefined,
       'company-info',
-      { jdTextLength: jdText.length }
+      { jdTextLength: jdText.length, jobTitle: jobTitle || undefined }
     );
     return null;
   }
