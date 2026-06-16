@@ -13,8 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./prisma/seed:/docker-entrypoint-initdb.d  # 初始化数据
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-resume_user} -d ${DB_NAME:-resume_coach}"]
       interval: 30s
@@ -28,8 +28,8 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -75,8 +75,8 @@ services:
       CACHE_TTL: ${CACHE_TTL:-3600}
     volumes:
       - uploads_data:/app/uploads
-    ports:
-      - "3000:3000"
+    # ports:
+    #   - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
