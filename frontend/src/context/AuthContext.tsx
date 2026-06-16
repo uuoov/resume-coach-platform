@@ -129,8 +129,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     clearAuth();
-    // 清除会话数据，防止数据泄露给下一个登录用户
-    sessionStorage.clear();
+    // 只清除会话相关的临时数据，保留历史记录（resume_coach_history）
+    // 注意：不要清 localStorage，那是用户的历史快照
+    const SESSION_KEYS_TO_REMOVE = [
+      'resume',
+      'jdAnalysis',
+      'matchResult',
+      'optimizationSuggestions',
+    ];
+    SESSION_KEYS_TO_REMOVE.forEach((key) => sessionStorage.removeItem(key));
   };
 
   return (

@@ -8,88 +8,46 @@ import {
   Chip,
   LinearProgress,
   Avatar,
+  Alert,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import BusinessIcon from '@mui/icons-material/Business';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-
-interface HistoryRecord {
-  id: string;
-  jobTitle: string;
-  company: string;
-  overallScore: number;
-  date: string;
-  resumeName: string;
-  aiPowered?: boolean;
-}
-
-const readHistoryRecords = (): HistoryRecord[] => {
-  const savedHistory = localStorage.getItem('resume_coach_history');
-  let records: HistoryRecord[] = [];
-
-  if (savedHistory) {
-    try {
-      records = JSON.parse(savedHistory) as HistoryRecord[];
-    } catch {
-      records = [];
-    }
-  }
-
-  const matchResult = sessionStorage.getItem('matchResult');
-  const jdAnalysis = sessionStorage.getItem('jdAnalysis');
-  const resume = sessionStorage.getItem('resume');
-
-  if (!matchResult || !jdAnalysis || !resume) {
-    return records;
-  }
-
-  try {
-    const match = JSON.parse(matchResult) as { overallScore?: number; aiPowered?: boolean };
-    const jd = JSON.parse(jdAnalysis) as { jobTitle?: string; company?: string };
-    const res = JSON.parse(resume) as { basicInfo?: { name?: string } };
-    const currentRecord: HistoryRecord = {
-      id: `hist-${Date.now()}`,
-      jobTitle: jd.jobTitle || '未知岗位',
-      company: jd.company || '未知公司',
-      overallScore: match.overallScore || 0,
-      date: new Date().toISOString(),
-      resumeName: res.basicInfo?.name || '未命名简历',
-      aiPowered: match.aiPowered,
-    };
-
-    const exists = records.some(
-      (record) => record.jobTitle === currentRecord.jobTitle && record.company === currentRecord.company
-    );
-
-    if (exists) {
-      return records;
-    }
-
-    const updated = [currentRecord, ...records];
-    localStorage.setItem('resume_coach_history', JSON.stringify(updated));
-    return updated;
-  } catch {
-    return records;
-  }
-};
+import {
+  readHistory,
+  deleteHistory,
+  clearHistory,
+  restoreSnapshotToSession,
+  type HistoryRecord,
+} from '../services/history';
 
 export default function HistoryPage() {
   const navigate = useNavigate();
-  const [records, setRecords] = useState<HistoryRecord[]>(readHistoryRecords);
+  const [records, setRecords] = useState<HistoryRecord[]>(readHistory);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleClearHistory = () => {
     if (confirm('确定要清空所有历史记录吗？')) {
+      clearHistory();
       setRecords([]);
-      localStorage.removeItem('resume_coach_history');
     }
   };
 
   const handleDeleteRecord = (id: string) => {
-    const updated = records.filter((r) => r.id !== id);
+    const updated = deleteHistory(id);
     setRecords(updated);
-    localStorage.setItem('resume_coach_history', JSON.stringify(updated));
+  };
+
+  const handleOpenRecord = (record: HistoryRecord) => {
+    const ok = restoreSnapshotToSession(record);
+    if (ok) {
+      navigate('/match');
+      return;
+    }
+    // 没有快照（旧数据）→ 提示重新分析
+    setNotice('该记录缺少完整快照，无法恢复。请重新上传简历并分析 JD。');
   };
 
   const getScoreColor = (score: number) => {
@@ -184,6 +142,12 @@ export default function HistoryPage() {
         </Box>
       </Box>
 
+      {notice && (
+        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+          {notice}
+        </Alert>
+      )}
+
       <Grid container spacing={2}>
         {records.map((record) => (
           <Grid key={record.id} size={{ xs: 12, sm: 6, lg: 4 }}>
@@ -199,7 +163,7 @@ export default function HistoryPage() {
                   borderColor: 'primary.main',
                 },
               }}
-              onClick={() => navigate('/match')}
+              onClick={() => handleOpenRecord(record)}
             >
               {/* 头部：分数 */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -258,9 +222,17 @@ export default function HistoryPage() {
                 <Typography variant="caption" color="text.secondary">
                   {formatDate(record.date)}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                  {record.resumeName && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                      {record.resumeName}
+                    </Typography>
+                  )}
                   {record.aiPowered && (
                     <Chip label="AI" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+                  )}
+                  {!record.snapshot && (
+                    <Chip label="旧" size="small" color="default" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
                   )}
                   <Button
                     size="small"

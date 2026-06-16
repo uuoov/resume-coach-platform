@@ -2,18 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Paper, Grid, LinearProgress, Alert, AlertTitle, Button, Divider, Skeleton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { api, type Resume, type JDAnalysis, type MatchResult } from '../services/api';
+import { appendHistory } from '../services/history';
 import RadarChart from '../components/RadarChart';
 import CompanyInfoCard from '../components/CompanyInfoCard';
-
-interface HistoryRecord {
-  id: string;
-  jobTitle: string;
-  company: string;
-  overallScore: number;
-  date: string;
-  resumeName: string;
-  aiPowered?: boolean;
-}
 
 interface MatchPrerequisites {
   resume: Resume | null;
@@ -64,27 +55,8 @@ export default function MatchResultPage() {
         setMatchResult(result);
         sessionStorage.setItem('matchResult', JSON.stringify(result));
 
-        // 自动保存到历史记录
-        try {
-          const historyRecord = {
-            id: `hist-${Date.now()}`,
-            jobTitle: jdAnalysis.jobTitle || '未知岗位',
-            company: jdAnalysis.company || '未知公司',
-            overallScore: result.overallScore || 0,
-            date: new Date().toISOString(),
-            resumeName: resume.basicInfo?.name || '未命名简历',
-            aiPowered: result.aiPowered,
-          };
-          const saved = localStorage.getItem('resume_coach_history');
-          const history: HistoryRecord[] = saved ? JSON.parse(saved) as HistoryRecord[] : [];
-          const exists = history.some(
-            (record) => record.jobTitle === historyRecord.jobTitle && record.company === historyRecord.company
-          );
-          if (!exists) {
-            history.unshift(historyRecord);
-            localStorage.setItem('resume_coach_history', JSON.stringify(history));
-          }
-        } catch { /* ignore */ }
+        // 立即写入历史记录（含完整快照，支持点击恢复）
+        appendHistory({ resume, jdAnalysis, matchResult: result });
       })
       .catch((err) => {
         setError(err.message || '匹配度计算失败');
