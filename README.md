@@ -28,7 +28,7 @@ AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定�
 - PDF 预览与导出：支持中文简历渲染、联系方式、日期、列表项和版式优化。
 - 用户认证：注册、登录、JWT 鉴权，生产环境要求数据库持久化。
 - 版本管理：支持为不同岗位创建简历版本。
-- 公司信息查询：支持内置信息和可选企业信息 API 扩展。
+- 公司与岗位洞察：基于已配置的 LLM 获取公司信息，并支持 Company × JobTitle 的岗位级洞察；低置信度时可通过 Jina Reader 补充官网公开页面。
 - 监控接口：提供健康检查和基础运行指标。
 
 ## 技术栈
@@ -39,7 +39,7 @@ AI 驱动的简历辅导平台，用于根据目标公司和岗位 JD 生成定�
 | 前端 | React, Vite, MUI |
 | 数据库 | PostgreSQL, Prisma ORM |
 | 缓存 | Redis (可选，best-effort 降级) |
-| 公司信息抓取 | Tavily REST API (可选，缺省走 Mock) |
+| 公司与岗位洞察 | LLM + Jina Reader（低置信度时补充公开网页，无需额外搜索 API Key） |
 | AI 接入 | DeepSeek / DashScope / OpenAI-compatible API |
 | 限流 | express-rate-limit (AI 端点 30/15min，全局 100/15min) |
 | 文件解析 | pdf-parse, mammoth |
@@ -60,7 +60,7 @@ flowchart LR
   API --> PDF["PDF Export"]
   API --> DB[("PostgreSQL")]
   API --> Redis[("Redis 可选")]
-  API --> Search["Tavily Search 可选"]
+  API --> Insight["Company Insight / Jina Reader"]
   API --> Files["Uploads / Object Storage"]
   Analyzer --> AI["AI Provider"]
   Optimizer --> AI
@@ -135,8 +135,7 @@ DEEPSEEK_MODEL=deepseek-chat
 可选增强（详见 `.env.example`）：
 
 ```env
-# 公司信息抓取：未配置则公司信息退回内置 Mock 数据
-# TAVILY_API_KEY=your_tavily_api_key
+# 公司信息增强复用已配置的 LLM；低置信度时可通过 Jina Reader 获取官网公开页面，无需额外搜索 API Key
 
 # Redis 缓存：未配置则服务降级为无缓存（所有操作静默跳过）
 # REDIS_URL=redis://localhost:6379
@@ -406,6 +405,8 @@ resume-coach-platform/
 
 ## 测试状态
 
+最近一次已记录的完整验证（2026-06-16）：TypeScript 编译通过、ESLint 通过、Jest 127/127 通过、前端构建成功。
+
 当前测试覆盖：
 
 - API 基础路由
@@ -449,7 +450,7 @@ It is not a resume template generator. It is a pre-application diagnosis and one
 - PDF preview and export: supports Chinese resume rendering, contact info, dates, lists, and layout tuning.
 - Authentication: register, login, JWT auth, and PostgreSQL persistence for production.
 - Resume versioning: create different resume versions for different job applications.
-- Company information lookup: supports built-in data and optional company API integrations.
+- Company × role insights: uses the configured LLM for company information and role-specific insights, with Jina Reader as a low-confidence public-web fallback.
 - Monitoring: provides health checks and basic runtime metrics.
 
 ### Tech Stack
@@ -460,6 +461,7 @@ It is not a resume template generator. It is a pre-application diagnosis and one
 | Frontend | React, Vite, MUI |
 | Database | PostgreSQL, Prisma ORM |
 | AI Provider | DeepSeek / DashScope / OpenAI-compatible API |
+| Company & role insights | LLM + Jina Reader fallback |
 | File Parsing | pdf-parse, mammoth |
 | PDF Generation | PDFKit |
 | Testing | Jest, Supertest |
