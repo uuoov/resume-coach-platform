@@ -4,6 +4,10 @@ AI-powered resume-to-JD matching and targeted optimization, built with React, Ty
 
 根据目标岗位分析简历匹配度，定位优势与差距，并生成可应用的优化建议。
 
+**[在线试用 / Live Demo](http://43.139.47.80:8080/)** · [演示说明 / Demo guide](./docs/DEMO.md#hosted-demo)
+
+在线版本为测试部署，打开后进入登录页。登录后可使用内置示例简历体验岗位匹配与优化建议。
+
 ![实际运行的匹配分析页面](./docs/assets/live-match-result.png)
 
 ## Problem and solution
@@ -77,7 +81,7 @@ cd frontend
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`; backend: `http://localhost:3001`. See [complete setup and API reference](./docs/SETUP_REFERENCE.md) and [deployment guide](./DEPLOYMENT.md) for production, Docker, admin and Chinese PDF font configuration.
+Local frontend: `http://localhost:5173`; local backend: `http://localhost:3001`. See [complete setup and API reference](./docs/SETUP_REFERENCE.md) and [deployment guide](./DEPLOYMENT.md) for production, Docker, admin and Chinese PDF font configuration.
 
 ## Demo and verification
 

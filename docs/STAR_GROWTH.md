@@ -38,7 +38,7 @@ This document collects practical ways to make the project easier to discover, ev
 
 ## Suggested Next Growth Tasks
 
-- Add a hosted demo or Docker demo profile.
+- Add a Docker demo profile alongside the [hosted test demo](./DEMO.md#hosted-demo).
 - Add a 60-second demo GIF to the README.
 - Add sample data for three more roles.
 - Add Playwright screenshots to CI artifacts.

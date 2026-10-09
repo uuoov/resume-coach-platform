@@ -1,6 +1,14 @@
 # Demo Preview
 
-This page shows both a static expected-output preview and screenshots from an actual local run of the website. It is designed for GitHub readers who want to understand what the product looks like before running the application locally.
+This page links to the hosted test demo and includes expected-output previews, screenshots from a local run, and instructions for running the application locally.
+
+## Hosted Demo
+
+**[Open the online demo](http://43.139.47.80:8080/)**
+
+This is an online test deployment. The app opens on the login page; sign in to try the built-in sample resume, JD matching, and optimization suggestions.
+
+The test account under [Run It Locally](#run-it-locally) is intended for local development; use your own account for the hosted demo.
 
 ![Resume Coach Platform demo preview](./assets/demo-preview.svg)
 
